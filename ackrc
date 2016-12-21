@@ -1,0 +1,16 @@
+--ignore-dir=.git
+--type-add=yaml=.conf
+--ignore-dir=target
+--ignore-dir=.build
+--ignore-dir=compiled_templates
+--ignore-file=is:jquery.js
+--ignore-file=is:jquery-ui.js
+--ignore-file=is:jquery-ui.css
+
+--type-set 
+pdf=.pdf
+--nopdf
+
+--type-set
+rtf=.rtf
+--nortf
