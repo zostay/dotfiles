@@ -15,6 +15,8 @@ link-file bin ~/bin
 link-file ackrc ~/.ackrc
 link-file tmux.conf ~/.tmux.conf
 
+link-file colorist ~/.colorist
+
 link-file vim ~/.vim
 link-file vim/init.vim ~/.vimrc
 link-file vim $XDG_CONFIG_HOME/nvim
