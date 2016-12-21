@@ -1,0 +1,5 @@
+#!/bin/zsh
+
+if hash brew 2>/dev/null; then
+    export HOMEBREW_GITHUB_API_TOKEN=$(zostay-get-secret HOMEBREW_GITHUB_API_TOKEN)
+fi

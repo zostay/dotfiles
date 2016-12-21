@@ -10,7 +10,12 @@ function copy-file { __mkdir "${2:h}"; rm -rf "$2"; cp "$PWD/$1" "$2" }
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:=$HOME/.config}
 
+link-file bin bin
+
 link-file vim ~/.vim
 link-file vim/init.vim ~/.vimrc
 link-file vim $XDG_CONFIG_HOME/nvim
 
+link-file zsh ~/.zsh
+link-file zshrc ~/.zshrc
+link-file zshenv ~/.zshenv

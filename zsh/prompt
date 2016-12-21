@@ -1,0 +1,40 @@
+
+# Some fancy git stuff for the prompt
+# Idea taken from
+#
+# http://www.simplisticcomplexity.com/2008/03/13/show-your-git-branch-name-in-your-prompt/
+git_branch() {
+    git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/#\1/'
+}
+
+integer amime
+case $USER; in
+    sterling)
+        amime=10
+        ;;
+    *)
+        amime=11
+        ;;
+esac
+
+integer hostnumber
+((hostnumber = $HOST[4,5] % 6))
+
+integer ostype
+case `uname`; in
+    Darwin*)
+        ostype=`xyz_index 0 5 5`
+        ((ostype = $ostype - $hostnumber * 6))
+        ;;
+
+    *)
+        ostype=`xyz_index 2 5 0`
+        ((ostype = $ostype + $hostnumber))
+        ;;
+
+esac
+
+export PROMPT=$'[%T] %{$FG[$amime]%}%n%{$FG[$ostype]%}@%m %{$FG[12]%}%1d$(git_branch)%# %{$FX[reset]%}'
+
+#export PROMPT=$'[%*] %{\e[01;36m%}%n@%m %{\e[01;34m%}%1d$(git_branch)%# %{\e[00m%}'
+
