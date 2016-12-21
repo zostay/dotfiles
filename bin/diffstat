@@ -1,0 +1,66 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use List::Util qw( reduce sum );
+use Term::ReadKey;
+
+my $old_file = undef;
+my $current_file = 'unknown';
+my %removed;
+my %added;
+while (<>) {
+    /^\+\+\+ (\S+)/ && do { 
+        $current_file = $1; 
+        if (defined $old_file) {
+            my $longest_common;
+            for my $i (1 .. length $current_file) {
+                if (substr($current_file, -$i) eq substr($old_file, -$i)) {
+                    $longest_common = substr($current_file, -$i);
+                }
+            }
+            $current_file = $longest_common if defined $longest_common;
+            $current_file =~ s{^/}{};
+        }
+        next 
+    };
+    /^--- (\S+)/ && do { $old_file = $1; next };
+    /^---/ && do { next };
+
+    /^(>|\+)/ && do { $added{$current_file}++; next };
+    /^(<|-)/ && do { $removed{$current_file}++; next };
+}
+
+my %files = map { $_ => 1 } keys %added, keys %removed;
+
+my ($term_width) = GetTerminalSize();
+my $file_width   = reduce { $a > $b ? $a : $b } map { length $_ } keys %files;
+
+if ($file_width > $term_width * .5) {
+    $file_width = int($term_width * .5)
+}
+
+my $hist_width = $term_width - $file_width - 9;
+
+my $biggest_bar = reduce { $a > $b ? $a : $b } map { ($added{$_}||0) + ($removed{$_}||0) } keys %files;
+my $warp_factor = $hist_width > $biggest_bar ? 1 : $hist_width / $biggest_bar;
+
+my $changed_files = 0;
+for my $file (sort keys %files) {
+    my $added   = $added{$file} || 0;
+    my $removed = $removed{$file} || 0;
+
+    my $total = $added + $removed;
+    my $bar   = '+' x ($added * $warp_factor);
+       $bar  .= '-' x ($removed * $warp_factor);
+
+    if (length $file > $file_width) {
+        $file = substr $file, -($file_width - 3);
+        $file = '...' . $file;
+    }
+
+    printf "%-${file_width}s | %5d %s\n", $file, $total, $bar;
+}
+
+printf " %d files changed, %d insertions(+), %d deletions(-)\n",
+    scalar(keys %files), sum(values %added) || 0, sum(values %removed) || 0;

@@ -1,0 +1,4 @@
+#/bin/zsh
+
+launchctl unload /Users/sterling/Library/LaunchAgents/com.qubling.Yukki.plist
+launchctl   load /Users/sterling/Library/LaunchAgents/com.qubling.Yukki.plist

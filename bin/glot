@@ -1,0 +1,81 @@
+#!/usr/bin/env perl6
+use v6;
+
+use GlotIO;
+use Text::Table::Simple;
+
+sub glot() returns GlotIO:D {
+    state $glot = GlotIO.new(:key<d9a5182e-0493-42e8-8119-4653a2dcc47e>);
+    $glot;
+}
+
+sub run-output(%res) {
+    $*OUT.print($_) with %res<stdout>;
+    $*ERR.print($_) with %res<stderr>;
+    exit %res<error> // 0;
+}
+
+sub code-pairs(@sources) {
+    die "no source files given" unless @sources.elems > 0;
+    gather for @sources -> $file {
+        take $file => $file.IO.slurp;
+    }
+}
+
+multi MAIN('languages') {
+    .say for glot.languages;
+}
+
+multi MAIN('versions', $language) {
+    .say for glot.versions($language);
+}
+
+multi MAIN('run', $script, :l($language)!, Bool :$e!, :v(:version($ver))? = 'latest') {
+    run-output glot.run($language, $script, :$ver);
+}
+
+multi MAIN('run', *@sources, :l($language)!, :v(:version($ver))? = 'latest') {
+    run-output glot.run($language, code-pairs(@sources), :$ver);
+    CATCH { note .message; exit 1 }
+}
+
+sub create-output(%res) {
+    say "ID %res<id>";
+}
+
+multi MAIN('create', $script, :t($title)!, :l($language)!, Bool :$e!, :v(:version($ver))? = 'latest') {
+    create-output glot.create($language, $script, $title, :$ver);
+}
+
+multi MAIN('create', *@sources, :t($title)!, :l($language)!, :v(:version($ver))? = 'latest') {
+    create-output glot.create($language, code-pairs(@sources), $title, :$ver);
+    CATCH { note .message; exit 1 }
+}
+
+multi MAIN('list', Bool :$mine = False, Int :$page = 1, Int :$per-page = 100) {
+    my %res = glot.list(:$mine, :$page, :$per-page);
+    my @rows = %res<content>.map({
+        [ .<id>, .<language>, .<public> ?? 'P' !! '' , .<title> ]
+    });
+
+    say lol2table(<ID Lang P Title>, @rows).join("\n");
+}
+
+multi MAIN('get', $id) {
+    my %res = glot.get($id);
+    for @(%res<files>) -> %file {
+        say '-' x 4, ' ', %file<name>, ' ', '-' x (78 - %file<name>.chars)
+            unless %res<files>.elems == 1;
+        say %file<content>;
+    }
+}
+
+multi MAIN('update', $id, $script, Bool :$e!, :l($language)!) {
+    glot.update: $id, $language, $script;
+}
+
+multi MAIN('update', $id, *@sources, :l($language)!, :t($title) = 'Untitled') {
+    die "no source files given" unless @sources.elems > 0;
+    glot.update: $id, $language, code-pairs(@sources), $title;
+    CATCH { note .message; exit 1 }
+}

@@ -1,0 +1,44 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+open my $list, 'git stash list|' or die 'cannot list stash';
+
+sub drop_stash_item($$$) {
+    my ($reason, $index, $message) = @_;
+
+    print "Dropping $reason stash item: stash\@{$index}: ($message)\n";
+
+    return if $ENV{DRY_RUN};
+    
+    system("git stash drop stash\@{$index}") == 0
+        or die "failed to drop stash\@{$index}";
+}
+
+our ($index, $message);
+sub foreach_stash_item(&) {
+    my $code = shift;
+
+    my @stash_list;
+    while (<$list>) {
+        my ($index, $message) = /^stash\@\{(\d+)\}: (.*)/;
+        push @stash_list, [ $index, $message ];
+    }
+
+    for my $stash_line (reverse @stash_list) {
+        local ($index, $message) = @$stash_line;
+        $code->();
+    }
+}
+
+foreach_stash_item {
+    if ($index > 10 && $message =~ /\bthrow away\b/) {
+        drop_stash_item('thrown away', $index, $message);
+    }
+};
+
+foreach_stash_item {
+    if ($index > 50) {
+        drop_stash_item('really old', $index, $message);
+    }
+};

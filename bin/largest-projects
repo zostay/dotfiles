@@ -1,0 +1,32 @@
+#!/usr/bin/env perl
+use v5.10;
+use autodie;
+use Moose;
+use lib "$ENV{HOME}/bin";
+
+open my $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*";
+
+my @list;
+while (<$duh>) {
+    chomp;
+
+    my ($size, $dir) = split /\s+/;
+
+    push @list, [ $size, $dir];
+}
+
+my @top_n = (sort { $b->[0] <=> $a->[0] } @list)[0 .. 9];
+for my $top (@top_n) {
+    my $kb = $top->[0] / 2 ** 10;
+    my $mb = $top->[0] / 2 ** 20;
+    my $gb = $top->[0] / 2 ** 30;
+    my $tb = $top->[0] / 2 ** 40;
+
+    my $size = "$top->[0]B";
+       $size = sprintf "%.1dK", ${kb} if $kb >= 1;
+       $size = sprintf "%.1dM", ${mb} if $mb >= 1;
+       $size = sprintf "%.1dG", ${gb} if $gb >= 1;
+       $size = sprintf "%.1dT", ${tb} if $tb >= 1;
+
+    printf "%-8s %s\n", $size, $top->[1];
+}

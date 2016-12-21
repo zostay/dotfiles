@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+BRANCH_FROM=$1
+BRANCH_FROM=${BRANCH_FROM:=master}
+
+CURRENT_BRANCH=`git branch 2> /dev/null | grep '*' | awk '{print $2}'`
+
+if [ -z "$CURRENT_BRANCH" ] || [ "$CURRENT_BRANCH" = "$BRANCH_FROM" ]; then
+    exit;
+fi
+
+THIS_BRANCH=$2
+THIS_BRANCH=${THIS_BRANCH:=$CURRENT_BRANCH}
+
+diff -u <(git rev-list --first-parent $THIS_BRANCH) \
+             <(git rev-list --first-parent $BRANCH_FROM) | \
+     sed -ne 's/^ //p' | head -1

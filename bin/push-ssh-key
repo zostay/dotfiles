@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+SERVER=$1
+
+ssh $SERVER mkdir .ssh
+cat ~/.ssh/id_rsa.pub | ssh $SERVER cat \>\> .ssh/authorized_keys
+
