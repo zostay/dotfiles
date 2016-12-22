@@ -34,6 +34,8 @@ link-file zsh ~/.zsh
 link-file zshrc ~/.zshrc
 link-file zshenv ~/.zshenv
 
+link-file gitignore ~/.gitignore
+
 tmpl-link-file gitconfig ~/.gitconfig
 
 
