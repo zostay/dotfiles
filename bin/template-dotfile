@@ -2,12 +2,10 @@
 use strict;
 use warnings;
 
+use lib "$ENV{HOME}/bin/lib";
 use lib "$ENV{HOME}/bin/Text-Template/lib";
-use lib "$ENV{HOME}/bin/YAML-Tiny/lib";
 use Text::Template;
-use YAML::Tiny;
-
-my $config = YAML::Tiny->read("$ENV{HOME}/.dotfiles.yml");
+use Zostay qw( dotfiles_config );
 
 my $env_name = shift @ARGV;
 die "invalid environment name" unless $env_name
@@ -26,7 +24,7 @@ my $template = Text::Template->new(
     SOURCE     => "$file_name.tmpl",
     DELIMITERS => [ '[%', '%]' ],
 );
-my $txt = $template->fill_in(HASH => $config->{environments}{$env_name}{$file_name});
+my $txt = $template->fill_in(HASH => dotfile_config($file_name, $env_name));
 
 open my $fh, '>', $output_name or die "cannot open $output_name: $!";
 print $fh $txt;
