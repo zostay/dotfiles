@@ -9,7 +9,7 @@ function backup-file { [[ -e "$1" && ! -h "$1" ]] && __mkdir "$HOME/.dotfiles.ba
 function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
 function copy-file { __mkdir "${2:h}"; backup-file "$2"; cp "$PWD/$1" "$2" }
 function tmpl-file { __mkdir ".build"; template-dotfile $DOTFILE_ENV "$1" ".build/$1" }
-function tmpl-link-file { tmpl-file "$1"; link-file "$1" "$2" }
+function tmpl-link-file { tmpl-file "$1"; link-file ".build/$1" "$2" }
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:=$HOME/.config}
 if [[ -n $* ]]; then
