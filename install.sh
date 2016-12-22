@@ -2,15 +2,13 @@
 
 # Thanks, Frew, for the inspiration!
 
-echo "Installing dotfiles."
-
 function __mkdir { if [[ ! -d $1 ]]; then mkdir -p $1; fi }
 function backup-file { 
     __mkdir "$HOME/.dotfiles.bak"
     if [[ -h "$1" ]]; then # clobber symlinks
         rm -rf "$1"
     elif [[ -e "$1" ]]; then # backup anything else
-        mv "$1" "$HOME/.dotfiles.bak/$1" 
+        mv "$1" "$HOME/.dotfiles.bak/${1:t}" 
     fi
 }
 function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
@@ -23,9 +21,35 @@ if [[ -n $* ]]; then
     DOTFILE_ENV=$1;
     echo $DOTFILE_ENV >! ~/.dotfile-environment
     shift;
-else
+elif [[ -e ~/.dotfile-environment ]]; then
     DOTFILE_ENV=$(cat ~/.dotfile-environment)
+else 
+    echo You must specify the name of this environment on the first run. >&2
+    exit 1
 fi
+
+if [[ -z "$LPASS_USERNAME" ]]; then
+    echo You must put the following line into .zshrc.local: >&2
+    echo >&2
+    echo export LPASS_USERNAME=email@address >&2
+    echo >&2
+    echo and then >&2
+    echo >&2
+    echo source ~/.zshrc.local >&2
+    echo >&2
+    exit 1
+fi
+
+bin/check-dotfiles-environment || exit 1
+
+echo "Pulling secrets."
+
+bin/zostay-pull-secrets \
+    HOMEBREW_GITHUB_API_TOKEN \
+    GIT_EMAIL_HOME \
+    GIT_EMAIL_ZIPRECRUITER
+
+echo "Installing dotfiles."
 
 link-file bin ~/bin
 

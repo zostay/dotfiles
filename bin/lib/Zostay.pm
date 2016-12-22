@@ -15,6 +15,7 @@ our @EXPORT_OK = qw(
     %FG %BG %FX xyz_color
     get_secret inject_secrets
     dotfiles_environment
+    dotfiles_config_raw
     dotfiles_config
 );
 
@@ -57,7 +58,7 @@ sub echdir($) {
 
 sub esystem(@) {
     say "$FG{167}@_$FX{reset}";
-    system(@_) == 0 || die "cannot run: ", join(' ', @_);
+    system(@_) == 0 || die "cannot run: ", join(' ', @_), "\n";
 }
 
 sub esymlink($$) {
@@ -73,40 +74,40 @@ sub erename($$) {
 sub dotfiles_environment {
     if (@_) {
         open my $fh, '>', "$ENV{HOME}/.dotfile-environment"
-            or die "cannot open .dotfile-environment: $!";
+            or die "cannot open .dotfile-environment: $!\n";
         print $fh "$_[0]\n";
         close $fh
-            or die "cannot write .dotfile-environment: $!";
+            or die "cannot write .dotfile-environment: $!\n";
         return $_[0];
     }
 
     open my $fh, '<', "$ENV{HOME}/.dotfile-environment"
-        or die "cannot open .dotfile-environment: $!";
+        or die "cannot open .dotfile-environment: $!\n";
     my $env = do { local $/; <$fh> };
     close $fh
-        or die "cannot read .dotfile-environment: $!";
+        or die "cannot read .dotfile-environment: $!\n";
 
     chomp $env;
     return $env;
 }
 
 sub get_secret($) {
-    my $secret = shift;
-    open my $fh, '-|', "$ENV{HOME}/bin/zostay-get-secret", $secret
-        or die "failed to start zostay-get-secret: $!";
+    my $name = shift;
+    open my $fh, '-|', "$ENV{HOME}/bin/zostay-get-secret", $name
+        or die "failed to start zostay-get-secret: $!\n";
 
     my $secret = do { local $/; <$fh> };
 
     close $fh
-        or die "failed to run zostay-get-secret: $!";
+        or die "failed to run zostay-get-secret ($?): $!\n";
 
     return $secret;
 }
 
 sub inject_secrets($;$) {
     my ($thing, $cache) = @_;
+    $cache //= {};
 
-    my $cache //= {};
     my $get_secret = sub {
         my $name = shift;
         if ($cache->{ $name }) {
@@ -132,7 +133,7 @@ sub inject_secrets($;$) {
         elsif (ref $value eq 'ARRAY') {
             inject_secrets($value, $cache);
         }
-    }
+    };
 
     if (ref $thing eq 'HASH') {
         for my $key (keys %$thing) {
@@ -148,16 +149,33 @@ sub inject_secrets($;$) {
     return $thing;
 }
 
-sub dotfiles_config($;$) {
+sub dotfiles_config_raw {
     my ($name, $env) = @_;
 
     $env //= dotfiles_environment();
 
-    die "invalid name" unless $name;
+    my $config;
+    if (-f "$ENV{HOME}/.dotfiles.yml") {
+        $config = YAML::Tiny->read("$ENV{HOME}/.dotfiles.yml");
+    }
+    elsif (-f "dotfiles.yml") {
+        $config = YAML::Tiny->read("dotfiles.yml");
+    }
+    else {
+        die "unable to locate .dotfiles.yml or dotfiles.yml\n";
+    }
 
-    my $config = YAML::Tiny->read("$ENV{HOME}/.dotfiles.yml");
+    if ($name) {
+        return $config->[0]{environments}{ $env }{ $name };
+    }
+    else {
+        return $config->[0]{environments}{ $env };
+    }
+}
 
-    return inject_secrets($config->{ $env }{ $name });
+sub dotfiles_config {
+    my ($name, $env) = @_;
+    return inject_secrets( dotfiles_config_raw($name, $env) );
 }
 
 1;

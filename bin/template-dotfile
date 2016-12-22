@@ -8,23 +8,25 @@ use Text::Template;
 use Zostay qw( dotfiles_config );
 
 my $env_name = shift @ARGV;
-die "invalid environment name" unless $env_name
-                                   && $config->{environments}{$env_name};
+die "environment name is required\n" unless $env_name;
 
 my $file_name = shift @ARGV;
-die "invalid file name" unless $file_name
-                            && -f "$file_name.tmpl"
-                            && $config->{environments}{$env_name}{$file_name};
+die "uknown file name\n" unless $file_name
+                             && -f "$file_name.tmpl";
 
 my $output_name = shift @ARGV;
-die "invalid output name" unless $output_name;
+die "output name is required\n" unless $output_name;
+
+my $config = dotfiles_config($file_name, $env_name);
+die "unable to find config for $file_name in $env_name\n"
+    unless $config;
 
 my $template = Text::Template->new(
     TYPE       => 'FILE',
     SOURCE     => "$file_name.tmpl",
     DELIMITERS => [ '[%', '%]' ],
 );
-my $txt = $template->fill_in(HASH => dotfile_config($file_name, $env_name));
+my $txt = $template->fill_in(HASH => $config);
 
 open my $fh, '>', $output_name or die "cannot open $output_name: $!";
 print $fh $txt;
