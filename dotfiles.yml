@@ -4,7 +4,11 @@ environments:
     gitconfig:
       email:
         __SECRET__: GIT_EMAIL_HOME
+    vimrc:
+      tabstop: 4
   ziprecruiter:
     gitconfig:
       email: 
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
+    vimrc:
+      tabstop: 2

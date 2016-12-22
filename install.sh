@@ -58,6 +58,7 @@ link-file tmux.conf ~/.tmux.conf
 
 link-file colorist ~/.colorist
 
+tmpl-file vimrc
 link-file vim ~/.vim
 link-file vim/init.vim ~/.vimrc
 link-file vim $XDG_CONFIG_HOME/nvim
