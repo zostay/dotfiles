@@ -5,7 +5,14 @@
 echo "Installing dotfiles."
 
 function __mkdir { if [[ ! -d $1 ]]; then mkdir -p $1; fi }
-function backup-file { [[ -e "$1" && ! -h "$1" ]] && __mkdir "$HOME/.dotfiles.bak" && mv "$1" "$HOME/.dotfiles.bak/$1" }
+function backup-file { 
+    __mkdir "$HOME/.dotfiles.bak"
+    if [[ -h "$1" ]]; then # clobber symlinks
+        rm -rf "$1"
+    elif [[ -e "$1" ]]; then # backup anything else
+        mv "$1" "$HOME/.dotfiles.bak/$1" 
+    fi
+}
 function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
 function copy-file { __mkdir "${2:h}"; backup-file "$2"; cp "$PWD/$1" "$2" }
 function tmpl-file { __mkdir ".build"; template-dotfile $DOTFILE_ENV "$1" ".build/$1" }
