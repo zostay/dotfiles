@@ -31,3 +31,9 @@
 [submodule "colorist"]
 	path = colorist
 	url = git@github.com:zostay/dot-colorist.git
+[submodule "bin/Text-Template"]
+	path = bin/Text-Template
+	url = git@github.com:mjdominus/Text-Template.git
+[submodule "bin/YAML-Tiny"]
+	path = bin/YAML-Tiny
+	url = git@github.com:Perl-Toolchain-Gang/YAML-Tiny.git

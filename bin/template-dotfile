@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use lib "$ENV{HOME}/bin/Text-Template/lib";
+use lib "$ENV{HOME}/bin/YAML-Tiny/lib";
+use Text::Template;
+use YAML::Tiny;
+
+my $config = YAML::Tiny->read("$ENV{HOME}/.dotfiles.yml");
+
+my $env_name = shift @ARGV;
+die "invalid environment name" unless $env_name
+                                   && $config->{environments}{$env_name};
+
+my $file_name = shift @ARGV;
+die "invalid file name" unless $file_name
+                            && -f "$file_name.tmpl"
+                            && $config->{environments}{$env_name}{$file_name};
+
+my $output_name = shift @ARGV;
+die "invalid output name" unless $output_name;
+
+my $template = Text::Template->new(
+    TYPE       => 'FILE',
+    SOURCE     => "$file_name.tmpl",
+    DELIMITERS => [ '[%', '%]' ],
+);
+my $txt = $template->fill_in(HASH => $config->{environments}{$env_name}{$file_name});
+
+open my $fh, '>', $output_name or die "cannot open $output_name: $!";
+print $fh $txt;
+close $fh or die "cannot write to $output_name: $!";

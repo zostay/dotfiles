@@ -1,0 +1,10 @@
+---
+environments:
+  home:
+    gitconfig:
+      email:
+        __SECRET__: GIT_EMAIL_HOME
+  ziprecruiter:
+    gitconfig:
+      email: 
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
