@@ -14,9 +14,10 @@ function backup-file {
 function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
 function copy-file { __mkdir "${2:h}"; backup-file "$2"; cp "$PWD/$1" "$2" }
 function tmpl-file { __mkdir ".build"; template-dotfile $DOTFILE_ENV "$1" ".build/$1" }
-function tmpl-link-file { tmpl-file "$1"; link-file ".build/$1" "$2" }
+function tmpl-link-file { tmpl-file "$1"; [[ -f ".build/$1" ]] && link-file ".build/$1" "$2" }
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:=$HOME/.config}
+
 if [[ -n $* ]]; then
     DOTFILE_ENV=$1;
     echo $DOTFILE_ENV >! ~/.dotfile-environment
@@ -70,5 +71,3 @@ link-file zshenv ~/.zshenv
 link-file gitignore ~/.gitignore
 
 tmpl-link-file gitconfig ~/.gitconfig
-
-
