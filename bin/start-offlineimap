@@ -1,0 +1,14 @@
+#!/bin/zsh
+
+source ~/.offlineimap.sh
+
+docker rm -f offlineimap
+docker pull zostay/offlineimap
+docker run --name offlineimap                   \
+  -d                                            \
+  -v ~/.netrc:/opt/etc/netrc                    \
+  -v ~/Mail:/opt/var/mail                       \
+  -v ~/.offlineimap/index:/opt/var/index        \
+  --env EMAIL="$MYEMAIL"                        \
+  --restart=always                              \
+  zostay/offlineimap
