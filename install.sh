@@ -71,3 +71,5 @@ link-file zshenv ~/.zshenv
 link-file gitignore ~/.gitignore
 
 tmpl-link-file gitconfig ~/.gitconfig
+
+tmpl-link-file offlineimap.sh ~/.offlineimap.sh
