@@ -3,3 +3,20 @@
   - folder: INBOX
     from: paypal@mail.paypal.com
     days: 7
+ziprecruiter:
+  - folder: Development.Build
+    days: 7
+  - folder: Development.Commit
+    days: 7
+  - folder: Development.Monitor
+    days: 7
+  - folder: Development.Production
+    days: 7
+  - folder: Development.Release
+    days: 7
+  - folder: Development.TEST
+    days: 7
+  - folder: Development.Testing
+    days: 7
+  - folder: Development.Ticket
+    days: 7
