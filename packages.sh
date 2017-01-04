@@ -26,3 +26,9 @@ fi
 for pkg in $cpanm; do
     cpanm --notest $pkg
 done
+
+# install lastpass-cli
+if hash brew 2> /dev/null; then
+    brew update
+    brew install lastpass-cli
+fi
