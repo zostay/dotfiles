@@ -45,7 +45,12 @@ sub purge_mail {
         my @keywords   = $x_keywords ? split(/\s*,\s*/, $x_keywords) : ();
         my %keywords   = map { $_ => 1 } @keywords;
 
+        # Already purged, nothing to do
         next if $keywords{'\Trash'};
+
+        # If I starred it, keep forever
+        next if $keywords{'\Important'};
+        next if $keywrods{'\Starred'};
 
         for my $c (@criteria) {
             my $okay_date = $c->{okay_date};
