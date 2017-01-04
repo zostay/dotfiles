@@ -24,7 +24,7 @@ my @PURGE = (
 
 if (-f "$ENV{HOME}/.purge-mail.local.yml") {
     my $local = YAML::Tiny->read("$ENV{HOME}/.purge-mail.local.yml")->[0];
-    push @PURGE, @{ $config };
+    push @PURGE, @{ $local // [] };
 }
 
 die "no Mail directory present" unless -d $MAILDIR;
