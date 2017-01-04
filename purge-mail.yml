@@ -1,0 +1,5 @@
+---
+__SHARED__:
+  - folder: INBOX
+    from: paypal@mail.paypal.com
+    days: 7
