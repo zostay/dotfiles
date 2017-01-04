@@ -2,6 +2,8 @@
 use v5.14;
 use warnings;
 
+use lib "$ENV{HOME}/bin/lib";
+
 use DDP;
 use DateTime;
 use Date::Parse qw( str2time );
@@ -16,9 +18,14 @@ my $MAILDIR = "$ENV{HOME}/Mail";
 my $env    = dotfiles_environment();
 my $config = YAML::Tiny->read("$ENV{HOME}/.purge-mail.yml")->[0];
 my @PURGE = (
-    @{ $config->[0]{'*'}  // [] },
-    @{ $config->[0]{$env} // [] },
+    @{ $config->{'*'}  // [] },
+    @{ $config->{$env} // [] },
 );
+
+if (-f "$ENV{HOME}/.purge-mail.local.yml") {
+    my $local = YAML::Tiny->read("$ENV{HOME}/.purge-mail.local.yml")->[0];
+    push @PURGE, @{ $config };
+}
 
 die "no Mail directory present" unless -d $MAILDIR;
 
@@ -50,7 +57,7 @@ sub purge_mail {
 
         # If I starred it, keep forever
         next if $keywords{'\Important'};
-        next if $keywrods{'\Starred'};
+        next if $keywords{'\Starred'};
 
         for my $c (@criteria) {
             my $okay_date = $c->{okay_date};
@@ -69,7 +76,7 @@ sub purge_mail {
                 'X-Keywords' => join(', ', @keywords, '\Trash')
             );
 
-            open $out_fh, '>', $msg_file or die "cannot open $msg_file to purge: $!";
+            open my $out_fh, '>', $msg_file or die "cannot open $msg_file to purge: $!";
             print $out_fh $msg->as_string;
             close $out_fh;
 
