@@ -10,6 +10,7 @@ use Date::Parse qw( str2time );
 use Email::MIME;
 use File::Find::Rule;
 use List::Util qw( none max sum );
+use Try::Tiny;
 use YAML::Tiny;
 use Zostay qw( dotfiles_environment );
 
@@ -35,9 +36,15 @@ sub label_mail {
 
     my $rule = File::Find::Rule->file->start($start);
     while (defined (my $msg_file = $rule->match)) {
-        open my $msg_fh, '<', $msg_file or die "cannot open $msg_file: $!";
-        my $msg_txt = do { local $/; <$msg_fh> };
-        close $msg_fh;
+        my $msg_txt;
+        try {
+           open my $msg_fh, '<', $msg_file or die "cannot open $msg_file: $!";
+           $msg_txt = do { local $/; <$msg_fh> };
+           close $msg_fh;
+        }
+        catch {
+            warn $_;
+        };
 
         next unless $msg_txt;
 

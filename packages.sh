@@ -9,6 +9,7 @@ cpanm=(
     Email::MIME
     File::Find::Rule
     List::Util
+    Try::Tiny
     YAML::Tiny
 )
 
