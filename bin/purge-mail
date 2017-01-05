@@ -39,13 +39,15 @@ sub purge_mail {
         my $msg_txt = do { local $/; <$msg_fh> };
         close $msg_fh;
 
+        next unless $msg_txt;
+
         my ($folder) = split '/', substr $msg_file, length($MAILDIR) + 1;
 
         # say $folder;
         # say $msg_file;
 
         my $msg = Email::MIME->new($msg_txt);
-        # say $msg->header_str('Date');
+        # say $msg->header_str('Date'), " = ", str2time($msg->header_str('Date'));
         my $date = DateTime->from_epoch(epoch => str2time($msg->header_str('Date')));
 
         my $x_keywords = $msg->header_str('X-Keywords');
