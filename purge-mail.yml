@@ -3,6 +3,9 @@
   - folder: INBOX
     from: paypal@mail.paypal.com
     days: 7
+  - folder: INBOX
+    from: no-reply@geni.com
+    days: 1
 ziprecruiter:
   - folder: Development.Build
     days: 7
