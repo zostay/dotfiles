@@ -31,4 +31,5 @@ done
 if hash brew 2> /dev/null; then
     brew update
     brew install lastpass-cli
+    brew install mutt
 fi
