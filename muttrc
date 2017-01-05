@@ -1,0 +1,17 @@
+set beep_new          = no
+set charset           = "utf-8"
+set send_charset      = "utf-8"
+set editor            = "vim -c 'set tw=70'"
+set use_envelope_from = yes
+set include           = yes
+set mbox_type         = Maildir
+set postponed         = "+gmail.Drafts"
+set record            = "+gmail.Sent_Mail"
+set realname          = "Sterling Hanenkamp"
+set spoolfile         = "+INBOX"
+
+alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^[% ziprecruiter_email %]$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
+
+mailboxes `find ~/Mail -maxdepth 1 -type d -printf "+%f "`
+
+source ~/.mutt/colors

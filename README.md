@@ -19,3 +19,18 @@ Run:
 
     ./install.sh <environment>
 
+Install local packages:
+
+    ./packages.sh
+
+## macOS
+
+Install Powerline font from here:
+
+    * <https://github.com/powerline/fonts/tree/master/DroidSansMono>
+
+Install iTerm2 from here:
+
+    * <https://www.iterm2.com/>
+
+Add the Powerline font to iTerm2.

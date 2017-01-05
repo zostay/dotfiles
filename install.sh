@@ -2,6 +2,16 @@
 
 # Thanks, Frew, for the inspiration!
 
+SKIP_SECRETS=0
+while getopts "s" opt; do
+    case $opt in
+        s)
+            SKIP_SECRETS=1
+            ;;
+    esac
+done
+shift $OPTIND-1
+
 function __mkdir { if [[ ! -d $1 ]]; then mkdir -p $1; fi }
 function backup-file { 
     __mkdir "$HOME/.dotfiles.bak"
@@ -43,12 +53,14 @@ fi
 
 bin/check-dotfiles-environment || exit 1
 
-echo "Pulling secrets."
+if (( ! $SKIP_SECRETS )); then
+    echo "Pulling secrets."
 
-bin/zostay-pull-secrets \
-    HOMEBREW_GITHUB_API_TOKEN \
-    GIT_EMAIL_HOME \
-    GIT_EMAIL_ZIPRECRUITER
+    bin/zostay-pull-secrets \
+        HOMEBREW_GITHUB_API_TOKEN \
+        GIT_EMAIL_HOME \
+        GIT_EMAIL_ZIPRECRUITER
+fi
 
 echo "Installing dotfiles."
 
@@ -75,3 +87,6 @@ tmpl-link-file gitconfig ~/.gitconfig
 tmpl-link-file offlineimap.sh ~/.offlineimap.sh
 
 link-file purge-mail.yml ~/.purge-mail.yml
+
+link-file muttrc ~/.muttrc
+link-file mutt ~/.mutt
