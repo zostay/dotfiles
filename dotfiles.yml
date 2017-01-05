@@ -1,5 +1,9 @@
 ---
 environments:
+  '*':
+    muttrc:
+      ziprecruiter_email:
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
   home:
     gitconfig:
       email:

@@ -97,6 +97,7 @@ sub get_secret($) {
         or die "failed to start zostay-get-secret: $!\n";
 
     my $secret = do { local $/; <$fh> };
+    chomp $secret;
 
     close $fh
         or die "failed to run zostay-get-secret ($?): $!\n";
@@ -165,11 +166,26 @@ sub dotfiles_config_raw {
         die "unable to locate .dotfiles.yml or dotfiles.yml\n";
     }
 
+    my $shared = $config->[0]{environments}{'*'}    // {};
+    my $this   = $config->[0]{environments}{ $env } // {};
     if ($name) {
-        return $config->[0]{environments}{ $env }{ $name };
+        return +{
+            %{ $shared->{ $name } // {} },
+            %{ $this->{ $name }   // {} },
+        };
     }
     else {
-        return $config->[0]{environments}{ $env };
+        my $config = {};
+        for my $key (keys %{ $shared // {} }) {
+            $config->{ $key } = +{ %{ $shared->{ $key } // {} } };
+        }
+        for my $key (keys %{ $this // {} }) {
+            $config->{ $key } = +{
+                %{ $config->{ $key } // {} },
+                %{ $this->{ $key }   // {} },
+            };
+        }
+        return $config;
     }
 }
 
