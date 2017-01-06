@@ -18,14 +18,14 @@ my $MAILDIR = "$ENV{HOME}/Mail";
 
 my $env    = dotfiles_environment();
 my $config = YAML::Tiny->read("$ENV{HOME}/.label-mail.yml")->[0];
-my @PURGE = (
+my @RULES = (
     @{ $config->{'*'}  // [] },
     @{ $config->{$env} // [] },
 );
 
 if (-f "$ENV{HOME}/.label-mail.local.yml") {
     my $local = YAML::Tiny->read("$ENV{HOME}/.label-mail.local.yml")->[0];
-    push @PURGE, @{ $local // [] };
+    push @RULES, @{ $local // [] };
 }
 
 die "no Mail directory present" unless -d $MAILDIR;
@@ -66,20 +66,22 @@ sub label_mail {
 
         for my $c (@criteria) {
             # MUST HAVE AN ACTION
-            next unless $c->{label}
-                     or $c->{move};
+            next unless defined $c->{label}
+                     or defined $c->{move};
 
             # No need to try and set the label again
-            next if $c->{label} && $keywords{ $c->{label} };
+            next if defined $c->{label} && $keywords{ $c->{label} };
 
             # No need to try and move when it's already here
-            next if $c->{move} && $folder eq $c->{move};
+            next if defined $c->{move} && $folder eq $c->{move};
 
-            my $okay_date = $c->{okay_date};
-            next unless DateTime->compare($date, $okay_date) < 0;
+            if (defined $c->{okay_date}) {
+                my $okay_date = $c->{okay_date};
+                next unless DateTime->compare($date, $okay_date) < 0;
+            }
 
             # Don't apply \Trash to important or starred
-            if ($c->{label} && $c->{label} eq '\Trash') {
+            if (defined $c->{label} && $c->{label} eq '\Trash') {
                 next if $keywords{'\Important'};
                 next if $keywords{'\Starred'};
             }
@@ -91,6 +93,15 @@ sub label_mail {
                 next unless @addrs;
 
                 next if none { $_->address eq $c->{from} } @addrs;
+            }
+
+            # Match To address, exact
+            if (defined $c->{to}) {
+                my $to = $msg->header_str('To');
+                my @addrs = Email::Address->parse($to);
+                next unless @addrs;
+
+                next if none { $_->address eq $c->{to} } @addrs;
             }
 
             # Match by Subject, exact
@@ -106,7 +117,7 @@ sub label_mail {
             }
 
             # Add a label
-            if ($c->{label}) {
+            if (defined $c->{label}) {
                 # Record stats
                 $actions{ "Labeled $c->{label}" }++;
 
@@ -126,30 +137,38 @@ sub label_mail {
             }
 
             # Move to a different folder
-            if ($c->{move}) {
+            if (defined $c->{move}) {
+                my $dest = "$MAILDIR/$c->{move}/cur";
+                unless (-d $dest) {
+                    warn "Folder $c->{move} does not exist.";
+                    next;
+                }
+
                 # Record stats
                 $actions{ "Moved $c->{move}" }++;
 
-                rename $msg_file, "$MAILDIR/$c->{move}/cur/$basename";
+                rename $msg_file, "$dest/$basename";
             }
         }
     }
 }
 
 my %folders;
-for my $config (@PURGE) {
-    $config->{okay_date} = DateTime->now->subtract(
-        days => $config->{days} // 90,
-    );
+for my $c (@RULES) {
+    if ($c->{days} || ($c->{label} && $c->{label} eq "\\Trash")) {
+      $c->{okay_date} = DateTime->now->subtract(
+          days => $config->{days} // 90,
+      );
+    }
 
-    push @{ $folders{ $config->{folder} // '' } }, $config;
+    push @{ $folders{ $c->{folder} // '' } }, $c;
 }
 
 for my $folder (keys %folders) {
     label_mail("$MAILDIR/$folder", @{ $folders{ $folder } });
 }
 
-my $total = sum values %actions;
+my $total = (sum values %actions) // 0;
 if ($total > 0) {
     my $kw    = max (5, map { length $_ } keys %actions);
     my $cw    = max map { length $_ } ($total, values %actions);
@@ -162,3 +181,5 @@ if ($total > 0) {
 else {
     say "Nothing to do.";
 }
+
+# vim: ts=4 sts=4 sw=4
