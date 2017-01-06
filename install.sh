@@ -86,7 +86,7 @@ tmpl-link-file gitconfig ~/.gitconfig
 
 tmpl-link-file offlineimap.sh ~/.offlineimap.sh
 
-link-file purge-mail.yml ~/.purge-mail.yml
+link-file label-mail.yml ~/.label-mail.yml
 
 tmpl-link-file muttrc ~/.muttrc
 link-file mutt ~/.mutt
