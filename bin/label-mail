@@ -119,6 +119,16 @@ sub label_mail {
                 next if none { $_->address eq $c->{from} } @addrs;
             }
 
+            # Match From address, just the domain name
+            if (defined $c->{from_domain}) {
+                $tests++;
+                my $from = $msg->header_str('From');
+                my @addrs = Email::Address->parse($from);
+                next unless @addrs;
+
+                next if none { $_->address =~ /@\Q$c->{from_domain}\E$/ } @addrs;
+            }
+
             # Match To address, exact
             if (defined $c->{to}) {
                 $tests++;
@@ -127,6 +137,16 @@ sub label_mail {
                 next unless @addrs;
 
                 next if none { $_->address eq $c->{to} } @addrs;
+            }
+
+            # Match To address, just the domain name
+            if (defined $c->{to_domain}) {
+                $tests++;
+                my $to = $msg->header_str('To');
+                my @addrs = Email::Address->parse($to);
+                next unless @addrs;
+
+                next if none { $_->address =~ /@\Q$c->{to_domain}\E$/ } @addrs;
             }
 
             # Match by Subject, exact
