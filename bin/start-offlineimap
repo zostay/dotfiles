@@ -11,4 +11,5 @@ docker run --name offlineimap                   \
   -v ~/.offlineimap/index:/opt/var/index        \
   --env EMAIL="$MYEMAIL"                        \
   --restart=always                              \
+  --cpu-quota=25000                             \
   zostay/offlineimap

@@ -36,6 +36,14 @@ sub label_mail {
 
     my $rule = File::Find::Rule->file->start($start);
     while (defined (my $msg_file = $rule->match)) {
+        my ($folder, $rd, $basename) = split '/', substr $msg_file, length($MAILDIR) + 1;
+
+        # Always skip the spam, drafts, sent, and trash folders
+        next if $folder eq 'gmail.Spam';
+        next if $folder eq 'gmail.Drafts';
+        next if $folder eq 'gmail.Trash';
+        next if $folder eq 'gmail.Sent_Mail';
+
         my $msg_txt;
         try {
            open my $msg_fh, '<', $msg_file or die "cannot open $msg_file: $!";
@@ -48,14 +56,17 @@ sub label_mail {
 
         next unless $msg_txt;
 
-        my ($folder, $rd, $basename) = split '/', substr $msg_file, length($MAILDIR) + 1;
-
         # say $folder;
         # say $msg_file;
 
         my $msg = Email::MIME->new($msg_txt);
         # say $msg->header_str('Date'), " = ", str2time($msg->header_str('Date'));
-        my $date = DateTime->from_epoch(epoch => str2time($msg->header_str('Date')));
+        my $time = str2time($msg->header_str('Date'));
+        unless (defined $time) {
+            warn $msg_txt . "\n\n" . "Illegal date in message.\n";
+            next;
+        }
+        my $date = DateTime->from_epoch(epoch => $time);
 
         my $x_keywords = $msg->header_str('X-Keywords');
         my @keywords   = $x_keywords ? split(/\s*,\s*/, $x_keywords) : ();
@@ -65,29 +76,42 @@ sub label_mail {
         next if $keywords{'\Trash'};
 
         for my $c (@criteria) {
+
+            # Safeguard to prevent rules with no tests from affecting all
+            my $tests = 0;
+
             # MUST HAVE AN ACTION
             next unless defined $c->{label}
-                     or defined $c->{move};
+                     or defined $c->{move}
+                     or defined $c->{clear};
 
             # No need to try and set the label again
             next if defined $c->{label} && $keywords{ $c->{label} };
+
+            # No need to try and clear when already clear
+            #
+            next if defined $c->{clear} && !$keywords{ $c->{clear} };
 
             # No need to try and move when it's already here
             next if defined $c->{move} && $folder eq $c->{move};
 
             if (defined $c->{okay_date}) {
+                $tests++;
                 my $okay_date = $c->{okay_date};
                 next unless DateTime->compare($date, $okay_date) < 0;
             }
 
-            # Don't apply \Trash to important or starred
+            # Don't apply \Trash to important
             if (defined $c->{label} && $c->{label} eq '\Trash') {
                 next if $keywords{'\Important'};
-                next if $keywords{'\Starred'};
             }
+
+            # Don't do anything if starred
+            next if $keywords{'\Starred'};
 
             # Match From address, exact
             if (defined $c->{from}) {
+                $tests++;
                 my $from = $msg->header_str('From');
                 my @addrs = Email::Address->parse($from);
                 next unless @addrs;
@@ -97,6 +121,7 @@ sub label_mail {
 
             # Match To address, exact
             if (defined $c->{to}) {
+                $tests++;
                 my $to = $msg->header_str('To');
                 my @addrs = Email::Address->parse($to);
                 next unless @addrs;
@@ -106,15 +131,34 @@ sub label_mail {
 
             # Match by Subject, exact
             if (defined $c->{subject}) {
+                $tests++;
                 my $subject = $msg->header_str('Subject');
                 next unless $c->{subject} eq $subject;
             }
 
             # Match by Subject, case-insensitive (with folded case)
             if (defined $c->{isubject}) {
+                $tests++;
                 my $subject = $msg->header_str('Subject');
                 next unless fc $c->{isubject} eq fc $subject;
             }
+
+            # Match word string, anywhere in message, exact
+            if (defined $c->{contains}) {
+                $tests++;
+                next unless $msg_txt =~ /\b\Q$c->{contains}\E\b/;
+            }
+
+            # Match word string, anywhere in message, case insensitive
+            if (defined $c->{icontains}) {
+                $tests++;
+                next unless $msg_txt =~ /\b\Q$c->{icontains}\E\b/i;
+            }
+
+            next unless $tests > 0;
+
+            # Flag to check if the message has been modified
+            my $modded = 0;
 
             # Add a label
             if (defined $c->{label}) {
@@ -130,7 +174,28 @@ sub label_mail {
                     'X-Keywords' => join(', ', @keywords),
                 );
 
-                # Write the message back with changes
+                $modded++;
+            }
+
+            # Remove a label
+            if (defined $c->{clear}) {
+                # Record stats
+                $actions{ "Cleared $c->{clear}" }++;
+
+                # Update the local state
+                @keywords = grep { $_ ne $c->{clear} } @keywords;
+                delete $keywords{ $c->{clear} };
+
+                # Update the message
+                $msg->header_str_set(
+                    'X-Keywords' => join(', ', @keywords),
+                );
+
+                $modded++;
+            }
+
+            # Write the message back with changes
+            if ($modded) {
                 open my $out_fh, '>', $msg_file or die "cannot open $msg_file to label: $!";
                 print $out_fh $msg->as_string;
                 close $out_fh;
@@ -157,11 +222,27 @@ my %folders;
 for my $c (@RULES) {
     if ($c->{days} || ($c->{label} && $c->{label} eq "\\Trash")) {
       $c->{okay_date} = DateTime->now->subtract(
-          days => $config->{days} // 90,
+          days => $c->{days} // 90,
       );
     }
 
     push @{ $folders{ $c->{folder} // '' } }, $c;
+
+    if (defined $c->{move} && defined $c->{folder}) {
+        my %and_clear_inbox = %$c;
+        delete $and_clear_inbox{move};
+
+        my %x = (
+            %and_clear_inbox,
+            folder => $c->{move},
+            clear  => '\Inbox',
+        );
+        push @{ $folders{ $c->{move} } }, +{
+            %and_clear_inbox,
+            folder => $c->{move},
+            clear  => '\Inbox',
+        };
+    }
 }
 
 for my $folder (keys %folders) {
