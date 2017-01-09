@@ -12,16 +12,20 @@ set realname          = "Sterling Hanenkamp"
 set spoolfile         = "+INBOX"
 set pager_index_lines = 20
 set sort              = threads
-set index_format      = "%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %Y %s"
+#set index_format      = "%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) <%-10Y> %s"
+set keywords_legacy   = no
+set keywords_standard = yes
 
 alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^[% $ziprecruiter_email %]$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
 
-mailboxes `find ~/Mail -maxdepth 1 -type d -printf "+%f "`
+mailboxes `find ~/Mail -maxdepth 1 -type d | cut -d/ -f 5 | sed '1d;s/^/+/'`
 
 source ~/.mutt/colors
 
 auto_view text/html
 alternative_order text/plain text/enriched text/html
 
-macro index,pager y "<save-message>=gmail.All_Mail<enter><enter>" "Archive"
+macro index,pager y "<save-message>+gmail.All_Mail<enter><enter>" "Archive"
 bind attach <return> view-mailcap
+
+# vim: ts=4 sw=4 sts=4 syntax=muttrc

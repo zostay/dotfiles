@@ -33,7 +33,7 @@ done
 if hash brew 2> /dev/null; then
     brew update
     brew install lastpass-cli
-    brew install mutt --with-s-lang
+    brew install neomutt/homebrew-neomutt/neomutt --with-s-lang --with-notmuch-patch
     brew install reattach-to-user-namespace
     brew install w3m
 fi

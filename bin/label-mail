@@ -68,7 +68,7 @@ sub label_mail {
         }
         my $date = DateTime->from_epoch(epoch => $time);
 
-        my $x_keywords = $msg->header_str('X-Label');
+        my $x_keywords = $msg->header_str('Keywords');
         my @keywords   = $x_keywords ? split(/\s*,\s*/, $x_keywords) : ();
         my %keywords   = map { $_ => 1 } @keywords;
 
@@ -191,7 +191,7 @@ sub label_mail {
 
                 # Update the message
                 $msg->header_str_set(
-                    'X-Label' => join(', ', @keywords),
+                    'Keywords' => join(', ', @keywords),
                 );
 
                 $modded++;
@@ -208,7 +208,7 @@ sub label_mail {
 
                 # Update the message
                 $msg->header_str_set(
-                    'X-Label' => join(', ', @keywords),
+                    'Keywords' => join(', ', @keywords),
                 );
 
                 $modded++;
