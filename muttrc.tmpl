@@ -7,13 +7,21 @@ set include           = yes
 set mbox_type         = Maildir
 set postponed         = "+gmail.Drafts"
 set record            = "+gmail.Sent_Mail"
+set trash             = "+gmail.Trash"
 set realname          = "Sterling Hanenkamp"
 set spoolfile         = "+INBOX"
-
-set sort              = reverse-date
+set pager_index_lines = 20
+set sort              = threads
+set index_format      = "%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %Y %s"
 
 alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^[% $ziprecruiter_email %]$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
 
 mailboxes `find ~/Mail -maxdepth 1 -type d -printf "+%f "`
 
 source ~/.mutt/colors
+
+auto_view text/html
+alternative_order text/plain text/enriched text/html
+
+macro index,pager y "<save-message>=gmail.All_Mail<enter><enter>" "Archive"
+bind attach <return> view-mailcap

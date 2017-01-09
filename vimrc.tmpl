@@ -148,9 +148,14 @@ autocmd BufEnter *.notes
 	\ set formatoptions=tcrqn |
 	\ set ft=notes
 
+autocmd BufEnter *.yml
+  \ set indentexpr=
+
+" Recent YAML indenter that ships with vim is crap, turning off for now
 autocmd FileType yaml
+    \ setlocal indentexpr= |
     \ setlocal si |
-	\ setlocal tw=0 |
+    \ setlocal tw=0 |
     \ setlocal expandtab |
     \ setlocal tabstop=2 |
     \ setlocal shiftwidth=2 |

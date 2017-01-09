@@ -34,6 +34,8 @@ if hash brew 2> /dev/null; then
     brew update
     brew install lastpass-cli
     brew install mutt --with-s-lang
+    brew install reattach-to-user-namespace
+    brew install w3m
 fi
 
 # vim: ts=4 sts=4 sw=4

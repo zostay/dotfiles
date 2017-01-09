@@ -90,3 +90,4 @@ link-file label-mail.yml ~/.label-mail.yml
 
 tmpl-link-file muttrc ~/.muttrc
 link-file mutt ~/.mutt
+link-file mailcap ~/.mailcap
