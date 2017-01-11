@@ -8,6 +8,9 @@ environments:
     gitconfig:
       email:
         __SECRET__: GIT_EMAIL_HOME
+    msmtprc:
+      email:
+        __SECRET__: GIT_EMAIL_HOME
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_HOME
@@ -16,6 +19,9 @@ environments:
   ziprecruiter:
     gitconfig:
       email: 
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
+    msmtprc:
+      email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
     offlineimap.sh:
       email:

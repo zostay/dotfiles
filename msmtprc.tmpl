@@ -1,0 +1,10 @@
+account        default
+auth           on
+tls            on
+tls_trust_file /etc/ssl/cert.pem
+logfile        ~/.msmtp.log
+host           smtp.gmail.com
+port           587
+from           [% $email %]
+user           [% $email %]
+passwordeval   /usr/bin/security find-generic-password -w -s smtp.gmail.com -a [% $email %] ~/Library/Keychains/login.keychain

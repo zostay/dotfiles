@@ -155,3 +155,4 @@ color body          color160        color233        "([a-z][a-z0-9+-]*://(((([a-
 #folder-hook gmail/inbox        "color status        J_black         color136        "
 #folder-hook gmail/important    "color status        J_black         color136        "
 
+color index_label color186 color233

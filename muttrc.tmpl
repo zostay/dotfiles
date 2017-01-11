@@ -12,9 +12,12 @@ set realname          = "Sterling Hanenkamp"
 set spoolfile         = "+INBOX"
 set pager_index_lines = 20
 set sort              = threads
-#set index_format      = "%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) <%-10Y> %s"
+set sort_aux          = reverse-last-date-received
+set index_format      = "%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %-20.20y %s"
+set delete            = yes
 set keywords_legacy   = no
 set keywords_standard = yes
+set sendmail          = "/usr/local/bin/msmtp"
 
 alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^[% $ziprecruiter_email %]$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
 
