@@ -151,6 +151,9 @@ autocmd BufEnter *.notes
 autocmd BufEnter *.yml
   \ set indentexpr=
 
+autocmd BufEnter /private/tmp/crontab.* setlocal backupcopy=yes
+autocmd BufEnter /tmp/crontab.* setlocal backupcopy=yes
+
 " Recent YAML indenter that ships with vim is crap, turning off for now
 autocmd FileType yaml
     \ setlocal indentexpr= |
