@@ -34,3 +34,9 @@ Install iTerm2 from here:
     * <https://www.iterm2.com/>
 
 Add the Powerline font to iTerm2.
+
+# Mail
+
+Add this to crontab if this is a mail checking machine:
+
+    */15 * * * * ~/bin/label-mail > /dev/null
