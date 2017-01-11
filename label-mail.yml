@@ -4,32 +4,60 @@ home:
     from: paypal@mail.paypal.com
     days: 7
     label: \Trash
+
   - folder: INBOX
     from: no-reply@geni.com
+    label: Pseudo-Junk.Social_Network
+
+  - folder: Pseudo-Junk.Social_Network
     days: 1
+    clear: \Inbox
+
+  - folder: Pseudo-Junk.Social_Network
+    days: 30
     label: \Trash
+
+  - folder: Home_School
+    days: 7
+    clear: \Inbox
+
+  - folder: Jobs
+    days: 7
+    clear: \Inbox
+
+  - folder: Money.Receipt
+    days: 7
+    clear: \Inbox
+
 ziprecruiter:
   - folder: Development.Build
     days: 7
     label: \Trash
+    
   - folder: Development.Commit
     days: 7
     label: \Trash
+    
   - folder: Development.Monitor
     days: 7
     label: \Trash
+
   - folder: Development.Production
     days: 7
     label: \Trash
+
   - folder: Development.Release
     days: 7
     label: \Trash
+
   - folder: Development.TEST
     days: 7
     label: \Trash
+
   - folder: Development.Testing
     days: 7
     label: \Trash
+
   - folder: Development.Ticket
     days: 7
     label: \Trash
