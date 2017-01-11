@@ -2,13 +2,15 @@ set beep_new          = no
 set charset           = "utf-8"
 set send_charset      = "utf-8"
 set editor            = "vim -c 'set tw=70'"
-set use_envelope_from = yes
 set include           = yes
 set mbox_type         = Maildir
 set postponed         = "+gmail.Drafts"
 set record            = "+gmail.Sent_Mail"
 set trash             = "+gmail.Trash"
 set realname          = "Sterling Hanenkamp"
+set use_from          = yes
+set from              = "[% $ziprecruiter_email %]"
+set edit_headers      = yes
 set spoolfile         = "+INBOX"
 set pager_index_lines = 20
 set sort              = threads
