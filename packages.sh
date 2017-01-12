@@ -34,7 +34,7 @@ if hash brew 2> /dev/null; then
     brew update
     brew install lastpass-cli
     brew install msmtp
-    brew install neomutt/homebrew-neomutt/neomutt --with-s-lang --with-notmuch-patch
+    brew install neomutt/homebrew-neomutt/neomutt --with-notmuch-patch
     brew install reattach-to-user-namespace
     brew install w3m
 fi
