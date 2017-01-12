@@ -17,6 +17,14 @@ home:
     days: 30
     label: \Trash
 
+  - folder: Pseudo-Junk
+    days: 3
+    clear: \Inbox
+
+  - folder: Pseudo-Junk
+    days: 90
+    label: \Trash
+
   - folder: Home_School
     days: 7
     clear: \Inbox
@@ -28,6 +36,11 @@ home:
   - folder: Money.Receipt
     days: 7
     clear: \Inbox
+
+  - folder: Today
+    days: 3
+    clear: \Inbox
+
 
 ziprecruiter:
   - folder: Development.Build
