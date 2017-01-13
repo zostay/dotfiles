@@ -11,6 +11,9 @@ environments:
     msmtprc:
       email:
         __SECRET__: GIT_EMAIL_HOME
+    muttrc:
+      email:
+        __SECRET__: GIT_EMAIL_HOME
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_HOME
@@ -21,6 +24,9 @@ environments:
       email: 
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
     msmtprc:
+      email:
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
+    muttrc:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
     offlineimap.sh:
