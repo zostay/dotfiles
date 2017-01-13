@@ -4,6 +4,7 @@ preferred_perl=5.24.0
 
 cpanm=(
     App::Ack
+    App::Colorist
     DateTime
     Date::Parse
     DDP
