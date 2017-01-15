@@ -16,6 +16,17 @@ use Zostay qw( dotfiles_environment );
 
 my $MAILDIR = "$ENV{HOME}/Mail";
 
+my %LABEL_BOXES = (
+    '\INBOX'     => 'INBOX',
+    '\Trash'     => 'gmail.Trash',
+    '\Important' => 'gmail.Important',
+    '\Sent'      => 'gmail.Sent_Mail',
+    '\Starred'   => 'gmail.Starred',
+    '\Draft'     => 'gmail.Drafts',
+);
+
+my %BOX_LABELS = reverse %LABEL_BOXES;
+
 my $env    = dotfiles_environment();
 my $config = YAML::Tiny->read("$ENV{HOME}/.label-mail.yml")->[0];
 my @RULES = (
@@ -69,7 +80,7 @@ sub label_mail {
         my $date = DateTime->from_epoch(epoch => $time);
 
         my $x_keywords = $msg->header_str('Keywords');
-        my @keywords   = $x_keywords ? split(/\s*,\s*/, $x_keywords) : ();
+        my @keywords   = $x_keywords ? split(/[\s,]+/, $x_keywords) : ();
         my %keywords   = map { $_ => 1 } @keywords;
 
         # Purged, leave it be
@@ -85,11 +96,22 @@ sub label_mail {
                      or defined $c->{move}
                      or defined $c->{clear};
 
+            # Make sure to use the label form if I used a mailbox name
+            for my $label (qw( label clear )) {
+                $c->{$label} = $BOX_LABELS{ $c->{$label} }
+                    if defined $c->{$label}
+                   and defined $BOX_LABELS{ $c->{$label} };
+            }
+
+            # Make sure to use the folder name if I used a label form
+            $c->{move} = $LABEL_BOXES{ $c->{move} }
+                if defined $c->{mvoe}
+               and defined $LABEL_BOXES{ $c->{move} };
+
             # No need to try and set the label again
             next if defined $c->{label} && $keywords{ $c->{label} };
 
             # No need to try and clear when already clear
-            #
             next if defined $c->{clear} && !$keywords{ $c->{clear} };
 
             # No need to try and move when it's already here
