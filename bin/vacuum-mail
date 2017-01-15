@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+use v5.24;
+use warnings;
+
+use lib "$ENV{HOME}/bin/lib";
+use Zostay::Mail;
+
+my $mail = Zostay::Mail->new;
+$mail->vacuum(sub { say @_ });
+

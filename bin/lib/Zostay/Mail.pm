@@ -1,0 +1,201 @@
+package Zostay::Mail;
+use v5.14;
+use warnings;
+use Moo;
+
+use DateTime;
+use File::Find::Rule;
+use YAML::Tiny;
+use Zostay qw( dotfiles_environment );
+use Zostay::Mail::Message;
+
+our $MAILDIR = "$ENV{HOME}/Mail";
+die "no Mail directory present" unless -d $MAILDIR;
+
+our %LABEL_BOXES = (
+    '\Inbox'     => 'INBOX',
+    '\Trash'     => 'gmail.Trash',
+    '\Important' => 'gmail.Important',
+    '\Sent'      => 'gmail.Sent_Mail',
+    '\Starred'   => 'gmail.Starred',
+    '\Draft'     => 'gmail.Drafts',
+);
+
+our %BOX_LABELS = reverse %LABEL_BOXES;
+
+has env => (
+    is          => 'ro',
+    lazy        => 1,
+    builder     => '_build_env',
+);
+
+sub _build_env {
+    my ($self) = @_;
+    dotfiles_environment();
+}
+
+has _rules => (
+    is          => 'ro',
+    lazy        => 1,
+    builder     => '_build__rules',
+);
+
+sub _build__rules {
+    my ($self) = @_;
+
+    my $config = YAML::Tiny->read("$ENV{HOME}/.label-mail.yml")->[0];
+    my @RULES = (
+        @{ $config->{'*'}  // [] },
+        @{ $config->{$self->env} // [] },
+    );
+
+    if (-f "$ENV{HOME}/.label-mail.local.yml") {
+        my $local = YAML::Tiny->read("$ENV{HOME}/.label-mail.local.yml")->[0];
+        push @RULES, @{ $local // [] };
+    }
+
+    # Sanity check the rules
+    for my $c (@RULES) {
+
+        # MUST HAVE AN ACTION
+        unless (defined $c->{label} or defined $c->{move} or defined $c->{clear}) {
+            my $pretty_c = join ', ', map { "$_: $c->{$_}" } keys %$c;
+            warn "RULE MISSING ACTION $pretty_c\n";
+            next;
+        }
+
+        # Make sure to use the label form if I used a mailbox name
+        for my $label (qw( label clear )) {
+            $c->{$label} = $BOX_LABELS{ $c->{$label} }
+                if defined $c->{$label}
+                and defined $BOX_LABELS{ $c->{$label} };
+        }
+
+        # Make sure to use the folder name if I used a label form
+        if (defined $c->{move}) {
+            $c->{move} = $LABEL_BOXES{ $c->{move} }
+                if defined $LABEL_BOXES{ $c->{move} };
+
+            $c->{move} =~ s{/}{.}g;
+        }
+    }
+
+    return \@RULES;
+}
+
+sub rules { @{ shift->_rules } }
+
+sub messages {
+    my ($self, $folder) = @_;
+
+    return map {
+        Zostay::Mail::Message->new(
+            file_name => $_,
+        );
+    } File::Find::Rule->file->in(
+        "$MAILDIR/$folder/cur",
+        "$MAILDIR/$folder/new",
+    );
+}
+
+sub folder_rules {
+    my ($self) = @_;
+
+    my %folders;
+    for my $c ($self->rules) {
+        if ($c->{days} || ($c->{label} && $c->{label} eq "\\Trash")) {
+        $c->{okay_date} = DateTime->now->subtract(
+            days => $c->{days} // 90,
+        );
+        }
+
+        push @{ $folders{ $c->{folder} // '' } }, $c;
+
+        if (defined $c->{move} && defined $c->{folder}) {
+            my %and_clear_inbox = %$c;
+            delete $and_clear_inbox{move};
+
+            my %x = (
+                %and_clear_inbox,
+                folder => $c->{move},
+                clear  => '\Inbox',
+            );
+            push @{ $folders{ $c->{move} } }, +{
+                %and_clear_inbox,
+                folder => $c->{move},
+                clear  => '\Inbox',
+            };
+        }
+    }
+
+    %folders;
+}
+
+sub label_messages {
+    my ($self) = @_;
+
+    my %actions;
+    my %folders = $self->folder_rules;
+    for my $folder (keys %folders) {
+        $self->label_folder_messages(\%actions, $folder, @{ $folders{ $folder } });
+    }
+
+    return %actions;
+}
+
+sub label_folder_messages {
+    my ($self, $actions, $folder, @rules) = @_;
+
+    for my $msg ($self->messages($folder)) {
+
+        # Always skip the spam, drafts, sent, and trash folders
+        next if $msg->folder eq 'gmail.Spam';
+        next if $msg->folder eq 'gmail.Drafts';
+        next if $msg->folder eq 'gmail.Trash';
+        next if $msg->folder eq 'gmail.Sent_Mail';
+
+        next unless $msg->text;
+
+        # Purged, leave it be
+        next if $msg->has_keyword('\Trash');
+
+        for my $c (@rules) {
+            my @actions = $msg->apply_rule($c);
+            $actions->{ $_ }++ for @actions;
+        }
+    }
+}
+
+sub vacuum {
+    my ($self, $log) = @_;
+    $log //= sub {};
+
+    opendir my $folderdh, "$MAILDIR" or die "cannot read $MAILDIR: $!";
+    for my $folder (readdir $folderdh) {
+        next if $folder eq '.';
+        next if $folder eq '..';
+        next unless -d "$MAILDIR/$folder";
+
+        # Labeling errors: Foo, or \Important
+        if ($folder =~ /,$ | ^\\/x) {
+            $log->("Dropping $folder.");
+            for my $msg ($self->messages($folder)) {
+                my $folder = $msg->best_alternate_folder;
+                $msg->move_to($folder);
+                $msg->remove_keyword($folder);
+                $msg->save;
+                $log->(sprintf " -> Moved %s to %s", $msg->basename, $folder);
+            }
+
+            for (qw( new cur tmp )) {
+                rmdir "$MAILDIR/$folder/$_"
+                    or warn "cannot delete $MAILDIR/$folder/$_: $!";
+            }
+            rmdir "$MAILDIR/$folder"
+                or warn "cannot delete $MAILDIR/$folder: $!";
+        }
+    }
+    closedir $folderdh;
+}
+
+1;
