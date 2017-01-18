@@ -143,5 +143,6 @@ if [ -e $HOME/.zshrc.local ]; then
 fi
 
 source $HOME/.zsh/rc/80-homebrew
+source $HOME/.zsh/rc/99-ziprecruiter
 
 export PERL6LIB="$HOME/perl6/lib"
