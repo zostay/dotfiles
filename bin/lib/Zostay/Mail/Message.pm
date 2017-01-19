@@ -1,8 +1,9 @@
 package Zostay::Mail::Message;
-use v5.14;
+use v5.24;
 use warnings;
 use Moo;
 
+use DDP;
 use DateTime;
 use Date::Parse qw( str2time );
 use Email::Address;
@@ -92,7 +93,7 @@ sub add_keyword {
     $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
         if defined $Zostay::Mail::BOX_LABELS{ $keyword };
 
-    $self->{ $keyword }++;
+    $self->_keywords->{ $keyword }++;
     $self->_update_mime_keywords;
 }
 
@@ -102,7 +103,7 @@ sub remove_keyword {
     $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
         if defined $Zostay::Mail::BOX_LABELS{ $keyword };
 
-    delete $self->{ $keyword };
+    delete $self->_keywords->{ $keyword };
     $self->_update_mime_keywords;
 }
 
@@ -165,7 +166,6 @@ sub apply_rule {
     if (defined $c->{from_domain}) {
         $tests++;
         return unless $self->from;
-
         return if none { $_->address =~ /@\Q$c->{from_domain}\E$/ } $self->from;
     }
 
@@ -197,6 +197,20 @@ sub apply_rule {
         $tests++;
         my $subject = $self->mime->header_str('Subject');
         return unless fc $c->{isubject} eq fc $subject;
+    }
+
+    # Match by Subject, anywhere in subject
+    if (defined $c->{subject_contains}) {
+        $tests++;
+        my $subject = $self->mime->header_str('Subject');
+        return unless $subject =~ /\Q$c->{subject_contains}\E/;
+    }
+
+    # Match by Subject, anywhere in subject, case insensitive
+    if (defined $c->{subject_icontains}) {
+        $tests++;
+        my $subject = $self->mime->header_str('Subject');
+        return unless $subject =~ /\Q$c->{subject_icontains}\E/i;
     }
 
     # Match word string, anywhere in message, exact
@@ -267,13 +281,28 @@ sub move_to {
     $self->folder($folder);
 }
 
+# Technically, you should never save a Maildir file directly. Instead, you
+# create a file in ~/Mail/folder/tmp, write the file, and then rename the file
+# into ~/Mail/folder/new. This means that a correct save requires that
+# we create a completely new file with a completely unique name and unlink the
+# old one. That's a pain. So, as an alternative, I move the file over to tmp,
+# modify the file, and then move it back to ~/new or ~/cur, wherever it was
+# before. Hopefully that doesn't break anything.
 sub save {
     my $self = shift;
 
-    open my $out_fh, '>', $self->file_name
-        or die sprintf "cannot save %s: %s", $self->file_name, $!;
+    my $tmp = join '/', $Zostay::Mail::MAILDIR, $self->folder, 'tmp', $self->basename;
+
+    rename $self->file_name, $tmp
+        or die sprintf "cannot move %s to %s: %s", $self->file_name, $tmp, $!;
+
+    open my $out_fh, '>', $tmp
+        or die sprintf "cannot update %s: %s", $tmp, $!;
     print $out_fh $self->mime->as_string;
     close $out_fh;
+
+    rename $tmp, $self->file_name
+        or die sprintf "cannot move %s to 5s: %s", $tmp, $self->file_name, $!;
 }
 
 sub best_alternate_folder {

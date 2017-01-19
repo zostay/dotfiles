@@ -41,6 +41,13 @@ home:
     days: 3
     clear: \Inbox
 
+  - folder: Tech.Perl
+    days: 7
+    clear: \Inbox
+
+  - folder: Tech.Perl.Perl_Mongers
+    days: 7
+    clear: \Inbox
 
 ziprecruiter:
   - folder: Development.Build

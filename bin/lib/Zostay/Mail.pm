@@ -178,7 +178,7 @@ sub vacuum {
 
         # Labeling errors: Foo, or \Important
         if ($folder =~ /,$ | ^\\/x) {
-            $log->("Dropping $folder.");
+            $log->("Dropping $folder");
             for my $msg ($self->messages($folder)) {
                 my $folder = $msg->best_alternate_folder;
                 $msg->move_to($folder);
@@ -193,6 +193,21 @@ sub vacuum {
             }
             rmdir "$MAILDIR/$folder"
                 or warn "cannot delete $MAILDIR/$folder: $!";
+        }
+
+        else {
+            $log->("Searching $folder for broken Keywords.");
+            for my $msg ($self->messages($folder)) {
+                # Something went wrong somewhere
+                if ($msg->has_keyword('Network')
+                || $msg->has_keyword('Pseudo-Junk.Social')) {
+                    $log->("Fixing Pseudo-Junk.Social Network to Pseudo-Junk.Social_Network.");
+                    $msg->remove_keyword('Network');
+                    $msg->remove_keyword('Pseudo-Junk.Social');
+                    $msg->add_keyword('Pseudo-Junk.Social_Network');
+                    $msg->save;
+                }
+            }
         }
     }
     closedir $folderdh;
