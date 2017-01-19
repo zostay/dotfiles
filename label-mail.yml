@@ -81,3 +81,7 @@ ziprecruiter:
   - folder: Development.Ticket
     days: 7
     label: \Trash
+
+  - folder: Development
+    days: 30
+    label: \Trash
