@@ -5,7 +5,7 @@ use warnings FATAL => 'all';
 use lib "$ENV{HOME}/bin/lib";
 use lib "$ENV{HOME}/bin/Text-Template/lib";
 use Text::Template;
-use Zostay qw( dotfiles_config );
+use Zostay qw( dotfiles_config dotfiles_environment );
 
 my $env_name = shift @ARGV;
 die "environment name is required\n" unless $env_name;
@@ -23,6 +23,8 @@ die "unable to find config for $file_name in $env_name\n"
 
 # Do not template this file if instructed not to
 exit if $config->{__SKIP__};
+
+$config->{__ENVIRONMENT__} = dotfiles_environment();
 
 sub Zostay::AUTOGEN_WARNING {
   my $warning = <<END_OF_WARNING;

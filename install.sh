@@ -92,3 +92,5 @@ tmpl-link-file muttrc ~/.muttrc
 link-file mutt ~/.mutt
 link-file mailcap ~/.mailcap
 tmpl-link-file msmtprc ~/.msmtprc
+
+tmpl-link-file signature ~/.signature
