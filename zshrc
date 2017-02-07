@@ -8,14 +8,17 @@ fi
 
 # UTF-8 terminal please
 export LC_ALL="en_US.UTF-8"
+export LANG="en_US.UTF-8"
 stty iutf8
 
 alias rm='rm -i'
 alias cp='cp -i'
 alias mv='mv -i'
 
-export EDITOR="nvim"
-alias vim=nvim
+if hash nvim 2> /dev/null; then
+    export EDITOR="nvim"
+    alias vim=nvim
+fi
 
 post_paths=(
     /opt/local/bin
@@ -26,6 +29,7 @@ post_paths=(
 pre_paths=(
     $HOME/bin
     $HOME/local/bin
+    $HOME/.plenv/bin
     $HOME/.plenv/shims
     $HOME/Documents/android/platform-tools
     $HOME/Documents/android/tools

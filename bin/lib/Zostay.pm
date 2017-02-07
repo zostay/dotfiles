@@ -4,7 +4,8 @@ use warnings;
 
 use File::Path;
 
-use lib "$ENV{HOME}/bin/YAML-Tiny/lib";
+use FindBin;
+use lib "$FindBin::Bin/../bin/YAML-Tiny/lib";
 use YAML::Tiny;
 
 require Exporter;

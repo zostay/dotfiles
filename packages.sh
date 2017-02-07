@@ -18,6 +18,8 @@ cpanm=(
 # install plenv
 if [ ! -d ~/.plenv ]; then
     git clone https://github.com/tokuhirom/plenv.git ~/.plenv
+    git clone https://github.com/tokuhirom/Perl-Build.git ~/.plenv/plugins/perl-build/
+    export PATH="$HOME/.plenv/shims:$HOME/.plenv/bin:$PATH"
 fi
 if ! plenv versions | grep $preferred_perl >/dev/null; then
     plenv install $preferred_perl
@@ -30,7 +32,6 @@ for pkg in $cpanm; do
     cpanm --notest $pkg
 done
 
-# install lastpass-cli
 if hash brew 2> /dev/null; then
     brew update
     brew install lastpass-cli
@@ -38,6 +39,11 @@ if hash brew 2> /dev/null; then
     brew install neomutt/homebrew-neomutt/neomutt --with-notmuch-patch
     brew install reattach-to-user-namespace
     brew install w3m
+fi
+
+if hash apt-get 2> /dev/null; then
+    sudo apt-get update
+    sudo apt-get install lastpass-cli
 fi
 
 # vim: ts=4 sts=4 sw=4
