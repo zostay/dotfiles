@@ -85,3 +85,7 @@ ziprecruiter:
   - folder: Development
     days: 30
     label: \Trash
+
+  - folder: Discussion
+    days: 1
+    clear: \Inbox
