@@ -1,0 +1,6 @@
+#!/bin/zsh
+
+while true; do
+    docker logs -f offlineimap
+    sleep 1
+done
