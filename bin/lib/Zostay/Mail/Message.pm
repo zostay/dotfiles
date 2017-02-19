@@ -8,7 +8,7 @@ use DateTime;
 use Date::Parse qw( str2time );
 use Email::Address;
 use Email::MIME;
-use List::Util qw( none );
+use List::Util qw( all none );
 use Try::Tiny;
 
 has file_name => ( is => 'rw' );
@@ -76,9 +76,29 @@ sub _build__keywords {
     \%keywords;
 }
 
-sub keywords { keys %{ shift->_keywords } }
-sub has_keyword { my $k = pop; !!shift->_keywords->{$k} }
-sub missing_keyword { my $k = pop; !shift->_keywords->{$k} }
+sub keywords { sort keys %{ shift->_keywords } }
+
+# Returns false if no keywords given.
+# Returns true if this message has all given keywords.
+# Returns false otherwise.
+sub has_keyword {
+    my $self = shift;
+    my @k = @_;
+    @k = @{ $k[0] } if @k == 1 && ref $k[0];
+    return '' unless @k;
+    return all { $self->_keywords->{$_} } @k;
+}
+
+# Returns false is no keywords given.
+# Returns true if this message is missing all given keywords.
+# Returns false otherwise.
+sub missing_keyword {
+    my $self = shift;
+    my @k = @_;
+    @k = @{ $k[0] } if @k == 1 && ref $k[0];
+    return '' unless @k;
+    return none { $self->_keywords->{$_} } @k;
+}
 
 sub _update_mime_keywords {
     my $self = shift;
@@ -88,22 +108,36 @@ sub _update_mime_keywords {
 }
 
 sub add_keyword {
-    my ($self, $keyword) = @_;
+    my $self = shift;
+    my @k = @_;
+    @k = @{ $k[0] } if @k == 1 && ref $k[0];
 
-    $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
-        if defined $Zostay::Mail::BOX_LABELS{ $keyword };
+    return unless @k > 0;
 
-    $self->_keywords->{ $keyword }++;
+    for my $keyword (@k) {
+        $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
+            if defined $Zostay::Mail::BOX_LABELS{ $keyword };
+
+        $self->_keywords->{ $keyword }++;
+    }
+
     $self->_update_mime_keywords;
 }
 
 sub remove_keyword {
-    my ($self, $keyword) = @_;
+    my $self = shift;
+    my @k = @_;
+    @k = @{ $k[0] } if @k == 1 && ref $k[0];
 
-    $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
-        if defined $Zostay::Mail::BOX_LABELS{ $keyword };
+    return unless @k > 0;
 
-    delete $self->_keywords->{ $keyword };
+    for my $keyword (@k) {
+        $keyword = $Zostay::Mail::BOX_LABELS{ $keyword }
+            if defined $Zostay::Mail::BOX_LABELS{ $keyword };
+
+        delete $self->_keywords->{ $keyword };
+    }
+
     $self->_update_mime_keywords;
 }
 
@@ -166,7 +200,7 @@ sub apply_rule {
     if (defined $c->{from_domain}) {
         $tests++;
         return unless $self->from;
-        return if none { $_->address =~ /@\Q$c->{from_domain}\E$/ } $self->from;
+        return if none { $_->address =~ /@\Q$c->{from_domain}\E$/i } $self->from;
     }
 
     # Match To address, exact
@@ -232,13 +266,24 @@ sub apply_rule {
     # Add a label
     if (defined $c->{label}) {
         $self->add_keyword($c->{label});
-        push @actions, "Labeled $c->{label}";
+        if (ref $c->{label}) {
+            push @actions, "Labeled $_" for @{ $c->{label} };
+        }
+        else {
+            push @actions, "Labeled $c->{label}";
+        }
     }
 
     # Remove a label
     if (defined $c->{clear}) {
+        p $c->{clear};
         $self->remove_keyword($c->{clear});
-        push @actions, "Cleared $c->{clear}";
+        if (ref $c->{clear}) {
+            push @actions, "Cleared $_" for @{ $c->{clear} };
+        }
+        else {
+            push @actions, "Cleared $c->{clear}";
+        }
 
     }
 

@@ -1,14 +1,5 @@
 ---
 home:
-  - folder: INBOX
-    from: paypal@mail.paypal.com
-    days: 7
-    label: \Trash
-
-  - folder: INBOX
-    from: no-reply@geni.com
-    label: Pseudo-Junk.Social_Network
-
   - folder: Pseudo-Junk.Social_Network
     days: 1
     clear: \Inbox

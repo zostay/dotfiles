@@ -66,9 +66,20 @@ sub _build__rules {
 
         # Make sure to use the label form if I used a mailbox name
         for my $label (qw( label clear )) {
-            $c->{$label} = $BOX_LABELS{ $c->{$label} }
-                if defined $c->{$label}
-                and defined $BOX_LABELS{ $c->{$label} };
+            next unless $c->{$label};
+
+            my @k = $c->{$label};
+            @k = @{ $k[0] } if @k == 1 && ref $k[0];
+
+            for my $i (0 .. $#k) {
+                $k[$i] =~ s{\.}{/}g;
+
+                $k[$i] = $BOX_LABELS{ $k[$i] }
+                    if defined $k[$i]
+                   and defined $BOX_LABELS{ $k[$i] };
+            }
+
+            $c->{$label} = \@k;
         }
 
         # Make sure to use the folder name if I used a label form
@@ -94,7 +105,7 @@ sub messages {
         );
     } File::Find::Rule->file->in(
         "$MAILDIR/$folder/cur",
-        "$MAILDIR/$folder/new",
+
     );
 }
 
