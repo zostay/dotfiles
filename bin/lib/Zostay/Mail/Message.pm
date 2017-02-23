@@ -11,6 +11,9 @@ use Email::MIME;
 use List::Util qw( all none );
 use Try::Tiny;
 
+has debug => (is => 'rw', default => 0);
+has dry_run => (is => 'rw', default => 0);
+
 has file_name => ( is => 'rw' );
 has file_parts => ( is => 'ro', lazy => 1, builder => '_build_file_parts' );
 has folder => ( is => 'rw', lazy => 1, builder => '_build_folder' );
@@ -157,6 +160,7 @@ sub _build__to {
 sub from { @{ shift->_from } }
 sub to { @{ shift->_to } }
 
+
 sub apply_rule {
     my ($self, $c) = @_;
 
@@ -165,100 +169,173 @@ sub apply_rule {
     # Safeguard to prevent rules with no tests from affecting all
     my $tests = 0;
 
-    # No need to try and set the label again
-    return if defined $c->{label} && $self->has_keyword($c->{label});
+    my @skip_tests = (
+        sub {
+            my ($self, $c) = @_;
+            return (0, 'not labeling')            unless defined $c->{label};
+            return (0, 'missing possible labels') unless $self->has_keyword($c->{label});
+            return (1, 'already labeled as such');
+        },
 
-    # No need to try and clear when already clear
-    return if defined $c->{clear} && $self->missing_keyword($c->{clear});
+        sub {
+            my ($self, $c) = @_;
+            return (0, 'not clearing')            unless defined $c->{clear};
+            return (0, 'labels to clear not set') unless $self->missing_keyword($c->{clear});
+            return (1, 'not labeled as such');
+        },
 
-    # No need to try and move when it's already here
-    return if defined $c->{move} && $self->folder eq $c->{move};
+        sub {
+            my ($self, $c) = @_;
+            return (0, 'not moving')              unless defined $c->{move};
+            return (0, 'in a different folder')   unless $self->folder eq $c->{move};
+            return (1, 'in the same folder');
+        },
 
-    if (defined $c->{okay_date}) {
-        $tests++;
-        my $okay_date = $c->{okay_date};
-        return unless DateTime->compare($self->date, $okay_date) < 0;
+        sub {
+            my ($self, $c) = @_;
+            return (1, 'do not modify \Starred') if $self->has_keyword('\Starred');
+            return (0, 'not \Starred');
+       },
+    );
+
+    my @rule_tests = (
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no okay date') unless defined $c->{okay_date};
+            $$tests++;
+            my $okay_date = $c->{okay_date};
+            return (1, 'message is more recent than okay date') unless DateTime->compare($self->date, $okay_date) < 0;
+            return (0, 'message is older than okay date');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no from test') unless defined $c->{from};
+            $$tests++;
+            return (0, 'message has no From header') unless $self->from;
+            return (0, 'message From header does not match from test') if none { $_->address eq $c->{from} } $self->from;
+            return (1, 'message From header matches from test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no from domain test') unless defined $c->{from_domain};
+            $$tests++;
+            return (0, 'message has no From header') unless $self->from;
+            return (0, 'message From header does not match from domain test') if none { $_->address =~ /@\Q$c->{from_domain}\E$/i } $self->from;
+            return (1, 'message From header matches from domain test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no to test') unless defined $c->{to};
+            $$tests++;
+            return (0, 'message has no To header') unless $self->to;
+            return (0, 'message To header does not match to test') if none { $_->address eq $c->{to} } $self->to;
+            return (1, 'message To header matches to test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no to domain test') unless defined $c->{to_domain};
+            $$tests++;
+            return (0, 'message has no To header') unless $self->to;
+            return (0, 'message To header does not match to tests') if none { $_->address =~ /@\Q$c->{to_domain}\E$/ } $self->to;
+            return (1, 'message To header matches to domain test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no exact subject test') unless defined $c->{subject};
+            $$tests++;
+            my $subject = $self->mime->header_str('Subject');
+            return (0, 'message Subject does not exactly match subject test') unless $c->{isubject} eq $subject;
+            return (1, 'message Subject exactly matches subject test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no folded case subject test') unless defined $c->{isubject};
+            $$tests++;
+            my $subject = $self->mime->header_str('Subject');
+            return (0, 'message Subject does not match folded case of subject test') unless fc $c->{isubject} eq fc $subject;
+            return (1, 'message Subject matches folded case of subject test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no subject contains test') unless defined $c->{subject_contains};
+            $$tests++;
+            my $subject = $self->mime->header_str('Subject');
+            return (0, 'message Subject fails contains subject test') unless $subject =~ /\Q$c->{subject_contains}\E/;
+            return (1, 'message Subject passes contains subject test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no subject contains subject folded case test') unless defined $c->{subject_icontains};
+            $$tests++;
+            my $subject = $self->mime->header_str('Subject');
+            return (0, 'message Subject fails contains subject folded case test') unless $subject =~ /\Q$c->{subject_icontains}\E/i;
+            return (1, 'message Subject passes contains subject folded case test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no contains anywhere test') unless defined $c->{contains};
+            $$tests++;
+            return (0, 'message fails contains anywhere test') unless $self->text =~ /\b\Q$c->{contains}\E\b/;
+            return (1, 'message passes contains anywhere test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no contains anywhere folded case test') unless defined $c->{icontains};
+            $$tests++;
+            return (0, 'message fails contains anywhere folded case test') unless $self->text =~ /\b\Q$c->{icontains}\E\b/i;
+            return (1, 'message passes contains anywhere folded case test');
+        },
+
+    );
+
+    my ($fail, @passes);
+    for my $skippable (@skip_tests) {
+        my ($skip, $msg) = $skippable->($self, $c);
+
+        if (!$skip) {
+            push @passes, $msg;
+        }
+        else {
+            $fail = $msg;
+            last;
+        }
     }
 
-    # Don't apply \Trash to important
-    if (defined $c->{label} && $c->{label} eq '\Trash') {
-        return if $self->has_keyword('\Important');
+    return if $fail;
+
+    for my $applies (@rule_tests) {
+        my ($pass, $msg) = $applies->($self, $c, \$tests);
+
+        if ($pass) {
+            push @passes, $msg;
+        }
+        else {
+            $fail = $msg;
+        }
     }
 
-    # Don't do anything if starred
-    return if $self->has_keyword('\Starred');
+    # DEBUGGING
+    if ($self->debug) {
+        if ($fail) {
+            warn "FAILED: $fail.\n";
+        }
 
-    # Match From address, exact
-    if (defined $c->{from}) {
-        $tests++;
-        return unless $self->from;
-
-        return if none { $_->address eq $c->{from} } $self->from;
+        if (@passes && !$fail || $self->debug > 1) {
+            warn "PASSES: ", join(', ', @passes), ".\n"
+        }
     }
 
-    # Match From address, just the domain name
-    if (defined $c->{from_domain}) {
-        $tests++;
-        return unless $self->from;
-        return if none { $_->address =~ /@\Q$c->{from_domain}\E$/i } $self->from;
-    }
-
-    # Match To address, exact
-    if (defined $c->{to}) {
-        $tests++;
-        return unless $self->to;
-
-        return if none { $_->address eq $c->{to} } $self->to;
-    }
-
-    # Match To address, just the domain name
-    if (defined $c->{to_domain}) {
-        $tests++;
-        return unless $self->to;
-
-        return if none { $_->address =~ /@\Q$c->{to_domain}\E$/ } $self->to;
-    }
-
-    # Match by Subject, exact
-    if (defined $c->{subject}) {
-        $tests++;
-        my $subject = $self->mime->header_str('Subject');
-        return unless $c->{subject} eq $subject;
-    }
-
-    # Match by Subject, case-insensitive (with folded case)
-    if (defined $c->{isubject}) {
-        $tests++;
-        my $subject = $self->mime->header_str('Subject');
-        return unless fc $c->{isubject} eq fc $subject;
-    }
-
-    # Match by Subject, anywhere in subject
-    if (defined $c->{subject_contains}) {
-        $tests++;
-        my $subject = $self->mime->header_str('Subject');
-        return unless $subject =~ /\Q$c->{subject_contains}\E/;
-    }
-
-    # Match by Subject, anywhere in subject, case insensitive
-    if (defined $c->{subject_icontains}) {
-        $tests++;
-        my $subject = $self->mime->header_str('Subject');
-        return unless $subject =~ /\Q$c->{subject_icontains}\E/i;
-    }
-
-    # Match word string, anywhere in message, exact
-    if (defined $c->{contains}) {
-        $tests++;
-        return unless $self->text =~ /\b\Q$c->{contains}\E\b/;
-    }
-
-    # Match word string, anywhere in message, case insensitive
-    if (defined $c->{icontains}) {
-        $tests++;
-        return unless $self->text =~ /\b\Q$c->{icontains}\E\b/i;
-    }
-
+    return if $fail;
     return unless $tests > 0;
 
     my $action;
@@ -276,7 +353,6 @@ sub apply_rule {
 
     # Remove a label
     if (defined $c->{clear}) {
-        p $c->{clear};
         $self->remove_keyword($c->{clear});
         if (ref $c->{clear}) {
             push @actions, "Cleared $_" for @{ $c->{clear} };
@@ -289,12 +365,12 @@ sub apply_rule {
 
     # Write the message back with changes
     if (@actions) {
-        $self->save;
+        $self->save unless $self->dry_run;
     }
 
     # Move to a different folder
     if (defined $c->{move}) {
-        $self->move_to($c->{move});
+        $self->move_to($c->{move}) unless $self->dry_run;
         push @actions, "Moved $c->{move}";
     }
 
@@ -361,3 +437,5 @@ sub best_alternate_folder {
 }
 
 1;
+
+# vim: ts=4 sts=4 sw=4

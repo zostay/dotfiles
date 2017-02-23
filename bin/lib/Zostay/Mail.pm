@@ -3,8 +3,10 @@ use v5.14;
 use warnings;
 use Moo;
 
+use DDP;
 use DateTime;
 use File::Find::Rule;
+use List::Util qw( any );
 use YAML::Tiny;
 use Zostay qw( dotfiles_environment );
 use Zostay::Mail::Message;
@@ -104,9 +106,24 @@ sub messages {
             file_name => $_,
         );
     } File::Find::Rule->file->in(
+        "$MAILDIR/$folder/new",
         "$MAILDIR/$folder/cur",
-
     );
+}
+
+sub message {
+    my ($self, $folder, $file) = @_;
+
+    for my $rd (qw( new cur )) {
+        my $file_name = "$MAILDIR/$folder/$rd/$file";
+        if (-f $file_name) {
+            return Zostay::Mail::Message->new(
+                file_name => $file_name,
+            );
+        }
+    }
+
+    return;
 }
 
 sub folder_rules {
@@ -114,10 +131,10 @@ sub folder_rules {
 
     my %folders;
     for my $c ($self->rules) {
-        if ($c->{days} || ($c->{label} && $c->{label} eq "\\Trash")) {
-        $c->{okay_date} = DateTime->now->subtract(
-            days => $c->{days} // 90,
-        );
+        if ($c->{days} || ($c->{label} && any { $_ eq '\\Trash' } @{ $c->{label} }) || ($c->{mode} && $c->{move} eq 'gmail.Trash')) {
+            $c->{okay_date} = DateTime->now->subtract(
+                days => $c->{days} // 90,
+            );
         }
 
         push @{ $folders{ $c->{folder} // '' } }, $c;
@@ -225,3 +242,5 @@ sub vacuum {
 }
 
 1;
+
+# vim: ts=4 sts=4 sw=4
