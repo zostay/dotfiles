@@ -204,7 +204,7 @@ sub apply_rule {
             return (1, 'no okay date') unless defined $c->{okay_date};
             $$tests++;
             my $okay_date = $c->{okay_date};
-            return (1, 'message is more recent than okay date') unless DateTime->compare($self->date, $okay_date) < 0;
+            return (1, 'message is more recent than okay date') if DateTime->compare($self->date, $okay_date) < 0;
             return (0, 'message is older than okay date');
         },
 
