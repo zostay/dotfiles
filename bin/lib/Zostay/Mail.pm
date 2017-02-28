@@ -204,8 +204,8 @@ sub vacuum {
         next if $folder eq '..';
         next unless -d "$MAILDIR/$folder";
 
-        # Labeling errors: Foo, or \Important
-        if ($folder =~ /,$ | ^\\/x) {
+        # Labeling errors: Foo, or \Important, or [ or ]
+        if ($folder =~ /,$ | ^\\ | ^(?:\[|\])$ /x) {
             $log->("Dropping $folder");
             for my $msg ($self->messages($folder)) {
                 my $folder = $msg->best_alternate_folder;
@@ -226,15 +226,27 @@ sub vacuum {
         else {
             $log->("Searching $folder for broken Keywords.");
             for my $msg ($self->messages($folder)) {
+                my $change = 0;
+
+                # Cleanup unwanted chars in our keywords
+                if ($msg->has_nonconforming_keywords) {
+                    $log->("Fixing non-conforming keywords.");
+                    $msg->cleanup_keywords;
+                    $change++;
+                }
+
                 # Something went wrong somewhere
                 if ($msg->has_keyword('Network')
                 || $msg->has_keyword('Pseudo-Junk.Social')) {
                     $log->("Fixing Pseudo-Junk.Social Network to Pseudo-Junk.Social_Network.");
+                    $change++;
+
                     $msg->remove_keyword('Network');
                     $msg->remove_keyword('Pseudo-Junk.Social');
                     $msg->add_keyword('Pseudo-Junk.Social_Network');
-                    $msg->save;
                 }
+
+                $msg->save if $change;
             }
         }
     }

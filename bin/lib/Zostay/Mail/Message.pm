@@ -79,6 +79,13 @@ sub _build__keywords {
     \%keywords;
 }
 
+# Returns true if the Keywords contains unwanted characters like commas
+sub has_nonconforming_keywords {
+    my $self = shift;
+    my $keywords = $self->mime->header_str('Keywords');
+    return scalar $keywords =~ / [^\w.-\/] /;
+}
+
 sub keywords { sort keys %{ shift->_keywords } }
 
 # Returns false if no keywords given.
@@ -108,6 +115,11 @@ sub _update_mime_keywords {
     $self->mime->header_str_set(
         Keywords => join(' ', $self->keywords)
     );
+}
+
+sub cleanup_keywords {
+    my $self = shift;
+    $self->_update_mime_keywords;
 }
 
 sub add_keyword {
@@ -429,8 +441,7 @@ sub save {
 sub best_alternate_folder {
     my $self = shift;
 
-    my $keywords = $self->mime->header_str('Keywords');
-    my @keywords = $keywords ? split(/[\s,]+/, $keywords) : ();
+    my @keywords = $self->keywords;
 
     return $keywords[0] if @keywords;
     return 'gmail.All_Mail';
