@@ -80,3 +80,11 @@ ziprecruiter:
   - folder: Discussion
     days: 1
     clear: \Inbox
+
+  - folder: Admin-HR/Candidate
+    days: 3
+    clear: \Inbox
+
+  - folder: Customer_Support
+    days: 1
+    clear: \Inbox
