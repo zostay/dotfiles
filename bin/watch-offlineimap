@@ -1,6 +1,6 @@
 #!/bin/zsh
 
 while true; do
-    docker logs -f offlineimap
+    docker logs -f -t --tail 1000 offlineimap
     sleep 1
 done
