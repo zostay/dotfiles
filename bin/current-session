@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+if [ -n "$STY" ]; then
+    echo $STY | awk -F. '{print $2}'
+elif [ -n "$TMUX" ]; then
+    tmux display-message -p "#S"
+fi
