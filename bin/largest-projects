@@ -1,10 +1,8 @@
 #!/usr/bin/env perl
-use v5.10;
-use autodie;
-use Moose;
-use lib "$ENV{HOME}/bin";
+use v5.14;
 
-open my $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*";
+open my $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*"
+  or die "cannot run du: $!";
 
 my @list;
 while (<$duh>) {
@@ -17,6 +15,8 @@ while (<$duh>) {
 
 my @top_n = (sort { $b->[0] <=> $a->[0] } @list)[0 .. 9];
 for my $top (@top_n) {
+    last unless $top;
+
     my $kb = $top->[0] / 2 ** 10;
     my $mb = $top->[0] / 2 ** 20;
     my $gb = $top->[0] / 2 ** 30;
