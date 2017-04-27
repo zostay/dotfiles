@@ -1,8 +1,25 @@
 #!/usr/bin/env perl
 use v5.14;
+use FindBin;
+use lib "$FindBin::Bin/../bin/lib";
+use Zostay qw( %FG %FX );
 
-open my $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*"
-  or die "cannot run du: $!";
+my $duh;
+my $multiplier;
+
+# MacOS will give us 512-byte blocks at a minimum (and default)
+if ($^O eq 'darwin') {
+  $multiplier = 512;
+  open $duh, '-|', qw( du -s ), glob "$ENV{HOME}/projects/*/*"
+    or die "cannot run du: $!";
+}
+
+# Linux will give us bytes when asked
+else {
+  $multiplier = 1;
+  open $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*"
+    or die "cannot run du: $!";
+}
 
 my @list;
 while (<$duh>) {
@@ -17,16 +34,33 @@ my @top_n = (sort { $b->[0] <=> $a->[0] } @list)[0 .. 9];
 for my $top (@top_n) {
     last unless $top;
 
-    my $kb = $top->[0] / 2 ** 10;
-    my $mb = $top->[0] / 2 ** 20;
-    my $gb = $top->[0] / 2 ** 30;
-    my $tb = $top->[0] / 2 ** 40;
+    my  $b = $multiplier * $top->[0];
+    my $kb = $b / 2 ** 10;
+    my $mb = $b / 2 ** 20;
+    my $gb = $b / 2 ** 30;
+    my $tb = $b / 2 ** 40;
 
-    my $size = "$top->[0]B";
-       $size = sprintf "%.1dK", ${kb} if $kb >= 1;
-       $size = sprintf "%.1dM", ${mb} if $mb >= 1;
-       $size = sprintf "%.1dG", ${gb} if $gb >= 1;
-       $size = sprintf "%.1dT", ${tb} if $tb >= 1;
+    my ($color, $size);
+    if ($tb >= 1) {
+        $color = $FG{196};
+        $size  = sprintf "%.1fT", ${tb} if $tb >= 1;
+    }
+    elsif ($gb >= 1) {
+        $color = $FG{208};
+        $size  = sprintf "%.1fG", ${gb} if $gb >= 1;
+    }
+    elsif ($mb >= 1) {
+        $color = $FG{226};
+        $size  = sprintf "%.1fM", ${mb} if $mb >= 1;
+    }
+    elsif ($kb >= 1) {
+        $color = $FG{118};
+        $size  = sprintf "%.1fK", ${kb} if $kb >= 1;
+    }
+    else {
+        $color = $FG{21};
+        $size  = "${b}B";
+    }
 
-    printf "%-8s %s\n", $size, $top->[1];
+    printf "$color%8s $FG{179}%s$FX{reset}\n", $size, $top->[1];
 }
