@@ -25,15 +25,15 @@ Install local packages:
 
 ## macOS
 
-Install Powerline font from here:
+Install FiraCode font from here:
 
-    * <https://github.com/powerline/fonts/tree/master/DroidSansMono>
+    * <https://github.com/tonsky/FiraCode>
 
 Install iTerm2 from here:
 
     * <https://www.iterm2.com/>
 
-Add the Powerline font to iTerm2.
+Add the FiraCode font to iTerm2.
 
 # Mail
 
