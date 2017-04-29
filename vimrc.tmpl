@@ -1,4 +1,7 @@
 [% Zostay::AUTOGEN_WARNING('"') %]
+scriptencoding utf-8
+set encoding=utf-8
+
 runtime bundle/pathogen/autoload/pathogen.vim
 call pathogen#infect()
 
@@ -10,7 +13,11 @@ set expandtab
 set ruler
 set visualbell
 
-set listchars=eol:␤,tab:␉␣,trail:␢,extends:»,precedes:«,space:␣
+if has("patch-7.4.710")
+    set listchars=eol:␤,tab:␉␣,trail:␢,extends:»,precedes:«,space:␣
+else
+    set listchars=eol:␤,tab:␉␣,trail:␢,extends:»,precedes:«
+endif
 
 set path=.,/usr/include,,src/main/scala,src/main/java,src/main
 

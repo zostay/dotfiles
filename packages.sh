@@ -21,6 +21,7 @@ if [ ! -d ~/.plenv ]; then
     git clone https://github.com/tokuhirom/Perl-Build.git ~/.plenv/plugins/perl-build/
     export PATH="$HOME/.plenv/shims:$HOME/.plenv/bin:$PATH"
 fi
+
 if ! plenv versions | grep $preferred_perl >/dev/null; then
     plenv install $preferred_perl
     plenv global $preferred_perl
