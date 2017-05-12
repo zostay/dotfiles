@@ -1,16 +1,45 @@
 #!/bin/zsh
 
-if [ "X$1" = "X" ]; then
-    echo "usage `basename $0` <host>"
+usage() {
+    echo "usage: $(basename $0) [ -n <session> ] <host>"
+
+    if [[ -n "$1" ]]; then
+        echo "$@"
+    fi
+
     exit 1
+}
+
+TMUX_NAME="auto"
+while getopts ":n:" opt; do
+    case $opt in
+        n)
+            TMUX_NAME="$OPTARG"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [[ -n "$1" ]]; then
+    HOST="$1"
+    shift
+#else
+#    usage()
 fi
 
-if [ "$1" = "-n" ]; then
-    TMUX_NAME="$2";
-    shift; shift;
+zmodload zsh/regex
+if [[ -n "$1" ]]; then
+    if [[ "$1" =~ '^-' ]]; then
+        usage "Options must come before host."
+    else
+        COMMAND="$@"
+    fi
 else
-    TMUX_NAME="auto";
+    COMMAND="tmux new -s $TMUX_NAME || tmux attach -d -t $TMUX_NAME"
 fi
 
 export AUTOSSH_PATH=/usr/bin/ssh
-exec /usr/local/bin/autossh -M0 -x -t "$@" "tmux new -s $TMUX_NAME || tmux attach -d -t $TMUX_NAME"
+#echo /usr/local/bin/autossh -M0 -x -t "$HOST" "$COMMAND"
+exec /usr/local/bin/autossh -M0 -x -t "$HOST" "$COMMAND"
+
+# vim: ts=4 sts=4 sw=4
