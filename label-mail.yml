@@ -40,6 +40,10 @@ home:
     days: 7
     clear: \Inbox
 
+  - folder: INBOX
+    days: 180
+    move: gmail.All_Mail
+
 ziprecruiter:
   - folder: Development.Build
     days: 7
