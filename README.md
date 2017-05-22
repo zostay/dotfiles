@@ -19,21 +19,25 @@ Run:
 
     ./install.sh <environment>
 
-Install local packages:
-
-    ./packages.sh
-
 ## macOS
+
+Install [Homebrew](https://github.com/Homebrew/brew/blob/master/docs/Installation.md#installation).
 
 Install FiraCode font from here:
 
-    * <https://github.com/tonsky/FiraCode>
+* <https://github.com/tonsky/FiraCode>
 
 Install iTerm2 from here:
 
-    * <https://www.iterm2.com/>
+* <https://www.iterm2.com/>
 
 Add the FiraCode font to iTerm2.
+
+# Install My Packages
+
+Install local packages:
+
+    ./packages.sh
 
 # Mail
 
