@@ -39,7 +39,7 @@ else
     exit 1
 fi
 
-if [[ -z "$LPASS_USERNAME" ]]; then
+if hash lpass 2> /dev/null && [[ -z "$LPASS_USERNAME" ]]; then
     echo You must put the following line into .zshrc.local: >&2
     echo >&2
     echo export LPASS_USERNAME=email@address >&2
@@ -56,10 +56,15 @@ bin/check-dotfiles-environment || exit 1
 if (( ! $SKIP_SECRETS )); then
     echo "Pulling secrets."
 
-    bin/zostay-pull-secrets \
-        HOMEBREW_GITHUB_API_TOKEN \
-        GIT_EMAIL_HOME \
-        GIT_EMAIL_ZIPRECRUITER
+    SECRETS_HERE=(GIT_EMAIL_HOME GIT_EMAIL_ZIPRECRUITER)
+
+    if hash brew 2>/dev/null; then
+        SECRETS_HERE+=(HOMEBREW_GITHUB_API_TOKEN)
+    fi
+
+    echo $SECRETS_HERE
+
+    bin/zostay-pull-secrets $SECRETS_HERE
 fi
 
 echo "Installing dotfiles."

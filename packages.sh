@@ -55,9 +55,4 @@ if hash brew 2> /dev/null; then
     brew install w3m
 fi
 
-if hash apt-get 2> /dev/null; then
-    sudo apt-get update
-    sudo apt-get install lastpass-cli
-fi
-
 # vim: ts=4 sts=4 sw=4
