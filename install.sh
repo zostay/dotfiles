@@ -67,7 +67,7 @@ echo "Installing dotfiles."
 link-file bin ~/bin
 
 link-file ackrc ~/.ackrc
-link-file tmux.conf ~/.tmux.conf
+tmpl-link-file tmux.conf ~/.tmux.conf
 
 link-file colorist ~/.colorist
 

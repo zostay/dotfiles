@@ -18,6 +18,8 @@ alias mv='mv -i'
 if hash nvim 2> /dev/null; then
     export EDITOR="nvim"
     alias vim=nvim
+else
+    export EDITOR="vim"
 fi
 
 post_paths=(
@@ -142,11 +144,11 @@ alias grep='grep --color=auto'
 alias unscram='perl -wle "print qq|\cO|"'
 alias irc='autossh -n irssi qubling'
 
+source $HOME/.zsh/rc/80-homebrew
+source $HOME/.zsh/rc/99-ziprecruiter
+
 if [ -e $HOME/.zshrc.local ]; then 
     source $HOME/.zshrc.local; 
 fi
-
-source $HOME/.zsh/rc/80-homebrew
-source $HOME/.zsh/rc/99-ziprecruiter
 
 export PERL6LIB="$HOME/perl6/lib"

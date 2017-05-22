@@ -1,10 +1,9 @@
+[% Zostay::AUTOGEN_WARNING() %]
 set -g prefix C-j
 unbind C-b
 
 set -g default-shell $SHELL 
-set -g default-command "reattach-to-user-namespace -l ${SHELL}"
-
-set -g renumber-windows on
+[% qq[set -g default-command "reattach-to-user-namespace -l ${SHELL}"] if $^O eq 'darwin' %]
 
 set -g set-titles on
 
