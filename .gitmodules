@@ -49,3 +49,6 @@
 [submodule "vim/bundle/calendar.vim"]
 	path = vim/bundle/calendar.vim
 	url = git@github.com:itchyny/calendar.vim.git
+[submodule "vim/bundle/dart-vim-plugin"]
+	path = vim/bundle/dart-vim-plugin
+	url = git@github.com:dart-lang/dart-vim-plugin.git
