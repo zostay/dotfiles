@@ -3,7 +3,7 @@ set -g prefix C-j
 unbind C-b
 
 set -g default-shell $SHELL 
-[% qq[set -g default-command "reattach-to-user-namespace -l ${SHELL}"] if $^O eq 'darwin' %]
+[% qq[set -g default-command "reattach-to-user-namespace -l \${SHELL}"] if $^O eq 'darwin' %]
 
 set -g set-titles on
 
