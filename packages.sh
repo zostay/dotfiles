@@ -1,5 +1,17 @@
 #!/bin/zsh
 
+if [[ ! -d ~/.rakudobrew ]; then
+    git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
+fi
+
+export PATH=~/.rakudobrew/bin:$PATH
+
+rakudobrew init
+rakudobrew build moar
+rakudobrew build panda
+
+perl6 packages.p6
+
 preferred_perl=5.24.0
 
 cpanm=(
