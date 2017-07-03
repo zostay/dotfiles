@@ -22,6 +22,8 @@ else
     export EDITOR="vim"
 fi
 
+export GOPATH="$HOME/projects/golang"
+
 post_paths=(
     /opt/local/bin
     /usr/local/sbin
@@ -39,6 +41,7 @@ pre_paths=(
     $HOME/pebble-dev/PebbleSDK-current/bin
     $HOME/.rakudobrew/bin
     $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
+    $GOPATH/bin
 )
 
 if which plenv > /dev/null; then eval "$(plenv init - zsh)"; fi
