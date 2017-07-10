@@ -1,5 +1,5 @@
 if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
-  export STARTERVIEW=$HOME/projects/0/ziprecruiter
+  export STARTERVIEW=$HOME/ziprecruiter
 fi
 
 # vim: ft=zsh
