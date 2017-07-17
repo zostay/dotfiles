@@ -38,7 +38,7 @@ case `uname`; in
 
 esac
 
-export PROMPT=$'$(settitle "$HOST:$(basename $PWD)")[%T] %{$FG[$amime]%}%n%{$FG[$ostype]%}@%m %{$FG[12]%}%1d$(git_branch)%# %{$FX[reset]%}'
+export PROMPT=$'$(settitle "$(hostname -s):$(basename $PWD)")[%T] %{$FG[$amime]%}%n%{$FG[$ostype]%}@%m %{$FG[12]%}%1d$(git_branch)%# %{$FX[reset]%}'
 
 #export PROMPT=$'[%*] %{\e[01;36m%}%n@%m %{\e[01;34m%}%1d$(git_branch)%# %{\e[00m%}'
 
