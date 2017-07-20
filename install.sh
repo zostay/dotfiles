@@ -2,6 +2,7 @@
 
 # Thanks, Frew, for the inspiration!
 
+PATH="$PWD/bin:$PATH"
 SKIP_SECRETS=0
 while getopts "s" opt; do
     case $opt in
