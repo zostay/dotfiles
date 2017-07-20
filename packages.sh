@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-if [[ ! -d ~/.rakudobrew ]; then
+if [[ ! -d ~/.rakudobrew ]]; then
     git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
 fi
 
