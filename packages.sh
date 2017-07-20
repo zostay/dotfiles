@@ -12,7 +12,7 @@ rakudobrew build panda
 
 perl6 packages.p6
 
-preferred_perl=5.24.2
+preferred_perl=5.26.0
 
 cpanm=(
     App::Ack
