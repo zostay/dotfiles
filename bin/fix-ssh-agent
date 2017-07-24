@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cat <<END_OF_SSH_RC > $HOME/.ssh/rc
+#!/bin/bash
+
+# Restore ssh-agent socket link on connect
+if test "\$SSH_AGENT_SOCK"; then
+  ln -sf \$SSH_AGENT_SOCK ~/.ssh/ssh_auth_sock
+fi
+END_OF_SSH_RC
