@@ -147,6 +147,7 @@ alias grep='grep --color=auto'
 alias unscram='perl -wle "print qq|\cO|"'
 alias irc='autossh -n irssi qubling'
 
+source $HOME/.zsh/rc/50-preexec
 source $HOME/.zsh/rc/80-homebrew
 source $HOME/.zsh/rc/99-ziprecruiter
 
