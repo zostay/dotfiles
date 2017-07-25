@@ -98,7 +98,7 @@ if !exists("*Eatchar")
    endfunc
 endif
 
-autocmd FileType perl,perl6,json autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType perl,perl6,json,zsh autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " Git
 autocmd BufNewFile,BufRead *.git/COMMIT_EDITMSG setf gitcommit
