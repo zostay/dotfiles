@@ -1,8 +1,11 @@
-if [ -n "$TMUX" ]; then                                                                               
+if [ -n "$TMUX" ]; then
     function refresh-ssh-auth-sock() {
-        export $(tmux show-environment | grep "^SSH_AUTH_SOCK")                                       
-    }                                                                                                 
-else                                                                                                  
+        SET=$(tmux show-environment | grep "^SSH_AUTH_SOCK")
+        if [ -n "$SET" ]; then 
+            export $SET
+        fi
+    }
+else
     function refresh-ssh-auth-sock() { }
 fi
 
