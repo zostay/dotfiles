@@ -94,17 +94,17 @@ man() {
 
 info() { vim -R -c "Man $1.i" -c "bdelete 1"; }
 
-pd() { 
+pd() {
     if perldoc "$1" >& /dev/null; then
-        vim -R -c "Man $1" -c "bdelete 1" 
-    else 
+        vim -R -c "Man $1" -c "bdelete 1"
+    else
         echo "Module not found";
     fi
 }
 
-pf() { 
+pf() {
     if perldoc -f "$1" >& /dev/null; then
-        vim -R -c "Man $1.pl" -c "bdelete 1"; 
+        vim -R -c "Man $1.pl" -c "bdelete 1";
     else
         echo "Function not found";
     fi
@@ -147,12 +147,12 @@ alias grep='grep --color=auto'
 alias unscram='perl -wle "print qq|\cO|"'
 alias irc='autossh -n irssi qubling'
 
-source $HOME/.zsh/rc/50-preexec
-source $HOME/.zsh/rc/80-homebrew
-source $HOME/.zsh/rc/99-ziprecruiter
+for RC in $HOME/.zsh/rc/*(n); do
+    source $RC
+done
 
-if [ -e $HOME/.zshrc.local ]; then 
-    source $HOME/.zshrc.local; 
+if [ -e $HOME/.zshrc.local ]; then
+    source $HOME/.zshrc.local;
 fi
 
 export PERL6LIB="$HOME/perl6/lib"
