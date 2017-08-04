@@ -45,6 +45,10 @@ shorten_hostname() {
             echo ss${SH##*-}
             ;;
 
+        Sterlings-MBP)
+            echo ZipMBP
+            ;;
+
         *)
             echo $SH
     esac
