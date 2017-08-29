@@ -14,12 +14,12 @@ done
 shift $OPTIND-1
 
 function __mkdir { if [[ ! -d $1 ]]; then mkdir -p $1; fi }
-function backup-file { 
+function backup-file {
     __mkdir "$HOME/.dotfiles.bak"
     if [[ -h "$1" ]]; then # clobber symlinks
         rm -rf "$1"
     elif [[ -e "$1" ]]; then # backup anything else
-        mv "$1" "$HOME/.dotfiles.bak/${1:t}" 
+        mv "$1" "$HOME/.dotfiles.bak/${1:t}"
     fi
 }
 function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
@@ -35,7 +35,7 @@ if [[ -n $* ]]; then
     shift;
 elif [[ -e ~/.dotfile-environment ]]; then
     DOTFILE_ENV=$(cat ~/.dotfile-environment)
-else 
+else
     echo You must specify the name of this environment on the first run. >&2
     exit 1
 fi
@@ -100,3 +100,5 @@ link-file mailcap ~/.mailcap
 tmpl-link-file msmtprc ~/.msmtprc
 
 tmpl-link-file signature ~/.signature
+
+link-file repl.rc ~/.re.pl/repl.rc

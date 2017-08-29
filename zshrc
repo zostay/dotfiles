@@ -72,7 +72,7 @@ bindkey -M viins "${terminfo[kcud1]/O/[}" down-line-or-history
 
 
 setopt correct cdablevars autolist
-setopt correctall autocd recexact histignoredups
+setopt autocd recexact histignoredups
 setopt noclobber autopushd extendedglob
 setopt globcomplete bareglobqual prompt_subst
 setopt appendhistory nullglob incappendhistory
