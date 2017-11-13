@@ -204,8 +204,8 @@ sub vacuum {
         next if $folder eq '..';
         next unless -d "$MAILDIR/$folder";
 
-        # Labeling errors: Foo, or \Important, or [ or ]
-        if ($folder =~ /,$ | ^\\ | ^(?:\[|\])$ /x) {
+        # Labeling errors: Foo, or \Important, or [ or ] or +Foo
+        if ($folder =~ /,$ | ^\+ | ^\\ | ^(?:\[|\])$ /x) {
             $log->("Dropping $folder");
             for my $msg ($self->messages($folder)) {
                 my $folder = $msg->best_alternate_folder;
