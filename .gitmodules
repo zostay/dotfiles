@@ -58,3 +58,6 @@
 [submodule "vim/bundle/vim-terraform"]
 	path = vim/bundle/vim-terraform
 	url = https://github.com/hashivim/vim-terraform
+[submodule "vim/bundle/vim-dockerfile"]
+	path = vim/bundle/vim-dockerfile
+	url = https://github.com/muggenhor/docker.vim.git
