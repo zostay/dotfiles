@@ -146,6 +146,7 @@ alias less='less -F'
 alias grep='grep --color=auto'
 alias unscram='perl -wle "print qq|\cO|"'
 alias irc='autossh -n irssi qubling'
+alias ecr-login='eval $(aws ecr get-login --no-include-email --region us-east-1)'
 
 for RC in $HOME/.zsh/rc/*(n); do
     source $RC
