@@ -1,2 +1,2 @@
-GOPATH=$HOME/.go
-mkdir -p $GOPATH
+GOPATH=$HOME/projects/go
+mkdir -p $GOPATH/src
