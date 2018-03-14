@@ -1,0 +1,84 @@
+#!/usr/bin/env perl6
+use v6;
+
+use Base64;
+use META6;
+use HTTP::UserAgent;
+use HTTP::Request::Common;
+use HTTP::Request::FormData;
+
+constant $PAUSE-ADD-URI = 'https://pause.perl.org/pause/authenquery';
+
+sub MAIN(
+    Str $tag, #= The release tag to package and upload
+    Bool :$release = False, #= Really do a release, otherwise, just dry-run
+) {
+    my $git-tag-l = run(qqww< git tag -l $tag >, :out);
+    $git-tag-l.out.slurp.trim eq $tag
+        or die "STOP! Tag $tag could not be verified.";
+
+    my $meta6-filename = $*CWD.add("META6.json");
+    if $meta6-filename.f {
+        my $meta = META6.new(file => $meta6-filename);
+
+        # Make sure version and tag match
+        $meta.version.perl eq $tag
+            or die "STOP! META6 reports version $meta.version(), but the tag is $tag.";
+
+        # Make sure the version and main module :ver match
+        my $main-module  = $meta.name;
+        my $main-pm6     = $meta.provides.{ $main-module };
+        my $main-ver     = qqx<perl6 -e 'EVALFILE "$main-pm6"; say ~GLOBAL::("$main-module").^ver'>.trim;
+        Version.new($main-ver) eqv $meta.version
+            or die "STOP! Main module reports version $main-ver, but the META6.json reports $meta.version()";
+
+        my $module-file = $main-module.subst('::', '-', :g)
+                        ~ '-' ~ $meta.version.Str;
+
+        # Generate the tarball
+        if $release {
+            run(qqww<
+                git archive "--prefix=$module-file/" -o "$module-file.tar.gz" $tag
+            >) or die "STOP! Unable to generate tarball named $module-file.tar.gz";
+
+            # Upload to CPAN
+            my $ua = HTTP::UserAgent.new;
+
+            my $fd = HTTP::Request::FormData.new;
+            $fd.add-part('HIDDENNAME', 'HANENKAMP');
+            $fd.add-part('CAN_MULTIPART', 1);
+            $fd.add-part('SUBMIT_pause99_add_uri_httpupload', " Upload this file from my disk ");
+            $fd.add-part('pause99_add_uri_uri', '');
+            $fd.add-part('pause99_add_uri_httpupload', "$module-file.tar.gz".IO, :content-type<application/octet-stream>);
+            $fd.add-part('pause99_add_uri_subdirtext', "Perl6");
+            my $upload-req = POST(
+                $PAUSE-ADD-URI,
+                Content-Type => $fd.content-type,
+                content => $fd.content,
+            );
+            my $secret = qqx<zostay-get-secret "Perl PAUSE">.trim;
+            my $auth = encode-base64("hanenkamp:$secret", :str);
+            $upload-req.field(Authorization => "Basic $auth");
+            #my $fh = 'test.request'.IO.open(:w);
+            #$fh.print($upload-req.Str(:bin));
+            #$fh.write($upload-req.content);
+            #$fh.close;
+            my $res = $ua.request($upload-req);
+            if $res.is-success {
+                #note $res.Str;
+                #'output.html'.IO.spurt($res.content);
+                note "Upload of $module-file.tar.gz to PAUSE is complete.";
+            }
+            else {
+                die "BAD STUFF:\n$res.Str()";
+            }
+        }
+        else {
+            note "DRY RUN: Generate tarball $module-file.tar.gz";
+            note "DRY RUN: Upload $module-file.tar.gz to CPAN";
+        }
+    }
+    else {
+        die "STOP! No META6.json found. Cannot release.";
+    }
+}
