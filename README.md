@@ -25,7 +25,7 @@ Install [Homebrew](https://github.com/Homebrew/brew/blob/master/docs/Installatio
 
 Install FiraCode font from here:
 
-* <https://github.com/tonsky/FiraCode>
+* <http://nerdfonts.com/>
 
 Install iTerm2 from here:
 
