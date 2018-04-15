@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+docker pull asciinema/asciicast2gif
+docker run --name asciicast2gif \
+    --rm                        \
+    -v $PWD:/data               \
+    asciinema/asciicast2gif "$@"
