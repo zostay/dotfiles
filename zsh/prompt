@@ -54,7 +54,13 @@ shorten_hostname() {
     esac
 }
 
-export PROMPT=$'%{$(settitle "$(shorten_hostname):$(basename $PWD)")%}[%T] %{$FG[$amime]%}%n%{$FG[$ostype]%}@%m %{$FG[12]%}%1d$(git_branch)%# %{$FX[reset]%}'
+if [ "$ASCIINEMA_REC" = 1 ]; then
+    PROMPT=$'%{$(settitle "$(shorten_hostname):$(basename $PWD)")%}%{$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$FX[reset]%}'
+else
+    PROMPT=$'%{$(settitle "$(shorten_hostname):$(basename $PWD)")%}[%T] %{$FG[$amime]%}%n%{$FG[$ostype]%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$FX[reset]%}'
+fi
+
+export PROMPT
 
 #export PROMPT=$'[%*] %{\e[01;36m%}%n@%m %{\e[01;34m%}%1d$(git_branch)%# %{\e[00m%}'
 
