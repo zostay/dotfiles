@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+SPEED=1
+while getopts "fs" opt; do
+    case $opt in
+        f)
+            SPEED=0.5
+            ;;
+        s)
+            SPEED=2
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+clear
+asciinema play -i$SPEED "$@"
