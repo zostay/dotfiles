@@ -9,6 +9,8 @@ use HTTP::Request::FormData;
 
 constant $PAUSE-ADD-URI = 'https://pause.perl.org/pause/authenquery';
 
+my %*SUB-MAIN-OPTS = :named-anywhere;
+
 sub MAIN(
     Str $tag, #= The release tag to package and upload
     Bool :$release = False, #= Really do a release, otherwise, just dry-run
@@ -28,7 +30,7 @@ sub MAIN(
         # Make sure the version and main module :ver match
         my $main-module  = $meta.name;
         my $main-pm6     = $meta.provides.{ $main-module };
-        my $main-ver     = qqx<perl6 -e 'EVALFILE "$main-pm6"; say ~GLOBAL::("$main-module").^ver'>.trim;
+        my $main-ver     = qqx<perl6 -e 'EVALFILE "$main-pm6"; say ~::("$main-module").^ver'>.trim;
         Version.new($main-ver) eqv $meta.version
             or die "STOP! Main module reports version $main-ver, but the META6.json reports $meta.version()";
 
