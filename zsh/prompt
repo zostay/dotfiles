@@ -21,10 +21,10 @@ case $USER; in
         ;;
 esac
 
-integer hostnumber
-((hostnumber = $HOST[4,5] % 6))
+typeset -i 10 hostnumber
+((hostnumber = 0x$(hostname | /usr/bin/crc32 /dev/stdin) % 6))
 
-integer ostype
+typeset -i 10 ostype
 case `uname`; in
     Darwin*)
         ostype=`xyz_index 0 5 5`
