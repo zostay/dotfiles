@@ -64,3 +64,6 @@
 [submodule "vim/bundle/vim-vue"]
 	path = vim/bundle/vim-vue
 	url = https://github.com/posva/vim-vue
+[submodule "vim/bundle/vim-openscad"]
+	path = vim/bundle/vim-openscad
+	url = https://github.com/sirtaj/vim-openscad
