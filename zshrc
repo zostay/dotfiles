@@ -25,7 +25,7 @@ fi
 export GOPATH="$HOME/projects/golang"
 
 if hash perl6 2> /dev/null; then
-    RAKUDO_VERSION=`perl6 -e '$*VM.version.Str.say'`
+    RAKUDO_VERSION=`perl6 -e '$*VM.version.Str.say ~~ s:r/\.\d//'`
 else
     RAKUDO_VERSION=NA
 fi
