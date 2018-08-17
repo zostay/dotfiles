@@ -1,0 +1,16 @@
+#!/bin/zsh
+
+MPG="$1"
+GIF="$2"
+
+if [[ ! -f "$MPG" ]]; then
+    echo No file named $MPG found.
+    exit 1
+fi
+
+if [[ -f "$GIF" ]]; then
+    echo The file named $GIF already exists.
+    exit 2
+fi
+
+ffmpeg -i "$MPG" -s 600x400 -pix_fmt rgb24 -r 10 -f gif - | gifsicle --optimize=3 --delay=3 > "$GIF"
