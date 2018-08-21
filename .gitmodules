@@ -67,3 +67,6 @@
 [submodule "vim/bundle/vim-openscad"]
 	path = vim/bundle/vim-openscad
 	url = https://github.com/sirtaj/vim-openscad
+[submodule "vim/bundle/vim-toml"]
+	path = vim/bundle/vim-toml
+	url = https://github.com/cespare/vim-toml.git
