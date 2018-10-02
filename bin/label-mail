@@ -4,10 +4,22 @@ use warnings;
 
 use lib "$ENV{HOME}/bin/lib";
 
+use Getopt::Long;
 use List::Util qw( max sum );
 use Zostay::Mail;
 
+my $all = 0;
+GetOptions(
+    'a' => \$all,
+);
+
 my $mail = Zostay::Mail->new;
+
+# Try not to look at everything every 10 minutes, just every hour.
+if (!$all && time / 60 % 60 > 9) {
+    $mail->only_filter_recent({ hours => 2 });
+}
+
 my %actions = $mail->label_messages;
 
 my $total = (sum values %actions) // 0;

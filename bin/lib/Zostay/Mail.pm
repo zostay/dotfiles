@@ -36,6 +36,15 @@ sub _build_env {
     dotfiles_environment();
 }
 
+has only_filter_recent => (is => 'rw');
+has only_filter_since => (is => 'rw', lazy => 1, builder => "_build_only_filter_since");
+
+sub _build_only_filter_since {
+    my $self = shift;
+    return undef unless $self->only_filter_recent;
+    DateTime->now->subtract(%{ $self->only_filter_recent });
+}
+
 has _rules => (
     is          => 'ro',
     lazy        => 1,
@@ -101,11 +110,21 @@ sub rules { @{ shift->_rules } }
 sub messages {
     my ($self, $folder) = @_;
 
+    my $messages = File::Find::Rule->file;
+
+    # When only_filter_since, we only want to look at messages newer than the
+    # date set in the setting.
+    if (defined $self->only_filter_since) {
+        my $epoch = $self->only_filter_since->epoch;
+        warn "Only looking at message files modified since $epoch";
+        $messages = $messages->mtime(">$epoch");
+    }
+
     return map {
         Zostay::Mail::Message->new(
             file_name => $_,
         );
-    } File::Find::Rule->file->in(
+    } $messages->in(
         "$MAILDIR/$folder/new",
         "$MAILDIR/$folder/cur",
     );
