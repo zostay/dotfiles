@@ -60,7 +60,7 @@ sub _build__rules {
     for my $c (@RULES) {
 
         # MUST HAVE AN ACTION
-        unless (defined $c->{label} or defined $c->{move} or defined $c->{clear}) {
+        unless (defined $c->{label} or defined $c->{move} or defined $c->{clear} or defined $c->{forward}) {
             my $pretty_c = join ', ', map { "$_: $c->{$_}" } keys %$c;
             warn "RULE MISSING ACTION $pretty_c\n";
             next;

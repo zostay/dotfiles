@@ -8,6 +8,8 @@ use DateTime;
 use Date::Parse qw( str2time );
 use Email::Address;
 use Email::MIME;
+use Email::Sender::Simple qw( sendmail );
+use Email::Sender::Transport::SMTP;
 use List::Util qw( all none );
 use Try::Tiny;
 
@@ -19,6 +21,11 @@ has file_parts => ( is => 'ro', lazy => 1, builder => '_build_file_parts' );
 has folder => ( is => 'rw', lazy => 1, builder => '_build_folder' );
 has rd => ( is => 'ro', lazy => 1, builder => '_build_rd' );
 has basename => ( is => 'ro', lazy => 1, builder => '_build_basename' );
+
+# This is dirty and ugly and I don't like it and it's wrong.
+my $FROM_EMAIL = `zostay-get-secret GIT_EMAIL_HOME`;
+my $SASL_USER  = `zostay-get-secret LABEL_MAIL_USERNAME`;
+my $SASL_PASS  = `zostay-get-secret LABEL_MAIL_PASSWORD`;
 
 sub _build_file_parts {
     my $self = shift;
@@ -375,6 +382,12 @@ sub apply_rule {
 
     }
 
+    # Forward email to an address
+    if (defined $c->{forward}) {
+        $self->forward_to($c->{forward}) unless $self->dry_run;
+        push @actions, "Forwarded $c->{forward}";
+    }
+
     # Write the message back with changes
     if (@actions) {
         $self->save unless $self->dry_run;
@@ -387,6 +400,61 @@ sub apply_rule {
     }
 
     return @actions;
+}
+
+my $transport = Email::Sender::Transport::SMTP->new({
+    host          => 'smtp.gmail.com',
+    port          => 587,
+    ssl           => 'starttls',
+    sasl_username => $SASL_USER,
+    sasl_password => $SASL_PASS,
+});
+
+sub forward_to {
+    my ($self, $to) = @_;
+
+    try {
+
+        # allow "foo@gmail.com" or [ qw(foo@gmail.com bar@gmail.com) ]
+        $to = [ $to ] unless ref $to;
+        my %to = map { $_ => 1 } @$to;
+
+        # We only want to forward matched messages a single time! We use the
+        # X-Zostay-Forwarded header to record and monitor what has been forwarded
+        # and what has not been.
+        my $forwarded_already = $self->mime->header_str('X-Zostay-Forwarded');
+        my %forwarded_emails;
+        if (defined $forwarded_already) {
+            %forwarded_emails = map { $_ => 1 } split /\s+,\s+/, $forwarded_already;
+        }
+
+        for my $email_already_hit (keys %to) {
+            if ($forwarded_emails{ $email_already_hit }) {
+                delete $to{ $email_already_hit };
+            }
+        }
+
+        # If we already forwarded to everyone in the list, skip actually forwarding.
+        return unless keys %to;
+
+        $to = [ keys %to ];
+
+        sendmail($self->mime, {
+            to        => $to,
+            from      => $FROM_EMAIL,
+            transport => $transport,
+        });
+
+        my %all_emails = (%to, %forwarded_emails);
+        $self->mime->header_str_set(
+            'X-Zostay-Forwarded' => join(', ', sort keys %all_emails),
+        );
+
+    }
+
+    catch {
+        warn $_;
+    };
 }
 
 sub move_to {
