@@ -1,14 +1,14 @@
 #!/bin/zsh
 
-if [[ ! -d ~/.rakudobrew ]]; then
-    git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
-fi
-
-export PATH=~/.rakudobrew/bin:$PATH
-
-rakudobrew init
-rakudobrew build moar
-rakudobrew build panda
+# if [[ ! -d ~/.rakudobrew ]]; then
+#     git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
+# fi
+#
+# export PATH=~/.rakudobrew/bin:$PATH
+#
+# rakudobrew init
+# rakudobrew build moar
+# rakudobrew build panda
 
 perl6 packages.p6
 
@@ -21,6 +21,7 @@ cpanm=(
     Date::Parse
     DDP
     Email::MIME
+    Email::Sender
     File::Find::Rule
     List::Util
     Try::Tiny

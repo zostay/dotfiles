@@ -16,7 +16,7 @@ home:
     days: 90
     label: \Trash
 
-  - folder: Home_School
+  - folder: School
     days: 7
     clear: \Inbox
 
