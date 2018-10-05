@@ -23,9 +23,9 @@ has rd => ( is => 'ro', lazy => 1, builder => '_build_rd' );
 has basename => ( is => 'ro', lazy => 1, builder => '_build_basename' );
 
 # This is dirty and ugly and I don't like it and it's wrong.
-my $FROM_EMAIL = `zostay-get-secret GIT_EMAIL_HOME`;
-my $SASL_USER  = `zostay-get-secret LABEL_MAIL_USERNAME`;
-my $SASL_PASS  = `zostay-get-secret LABEL_MAIL_PASSWORD`;
+my $FROM_EMAIL = `$ENV{HOME}/bin/zostay-get-secret GIT_EMAIL_HOME`;
+my $SASL_USER  = `$ENV{HOME}/bin/zostay-get-secret LABEL_MAIL_USERNAME`;
+my $SASL_PASS  = `$ENV{HOME}/bin/zostay-get-secret LABEL_MAIL_PASSWORD`;
 
 sub _build_file_parts {
     my $self = shift;
@@ -402,18 +402,26 @@ sub apply_rule {
     return @actions;
 }
 
-my $transport = Email::Sender::Transport::SMTP->new({
-    host          => 'smtp.gmail.com',
-    port          => 587,
-    ssl           => 'starttls',
-    sasl_username => $SASL_USER,
-    sasl_password => $SASL_PASS,
-});
+my $transport = try {
+    Email::Sender::Transport::SMTP->new({
+        host          => 'smtp.gmail.com',
+        port          => 587,
+        ssl           => 'starttls',
+        sasl_username => $SASL_USER,
+        sasl_password => $SASL_PASS,
+    });
+}
+catch {
+    warn $_;
+};
 
 sub forward_to {
     my ($self, $to) = @_;
 
     try {
+
+        die "Unable to forward because SMTP transport is not configured."
+            unless defined $transport;
 
         # allow "foo@gmail.com" or [ qw(foo@gmail.com bar@gmail.com) ]
         $to = [ $to ] unless ref $to;
