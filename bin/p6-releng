@@ -3,253 +3,278 @@ use v6;
 
 use META6;
 
-my %*SUB-MAIN-OPTS = :named-anywhere;
+class Releng {
+    has Str $.v-string;
+    has Bool $.releng;
+    has Str $.changes;
+    has Str $.meta6;
+    has Str $.readme;
 
-sub verify-tag(:$v-string!) {
-    print "Verifying $v-string tag... ";
-    my $git-tag-l = run(qqww< git tag -l $v-string >, :out);
-    $git-tag-l or die "STOP! `git tag -l $v-string` exited with an error.";
-    $git-tag-l.out.slurp.trim eq ~$v-string
-        and die "STOP! Tag $v-string is already used.";
-    say "OK";
-}
+    has Version $!version;
+    has Str $!vless-string;
 
-sub verify-release(:$v-string!) {
-    print "Verifying release-$v-string branch... ";
-    my $git-branch-l = run(qqww< git branch --list "release-$v-string" >, :out);
-    $git-branch-l or die "STOP! `git branch --list release-$v-string` exited with an error.";
-    $git-branch-l.out.slurp.trim eq ~"release-$v-string"
-        and die "STOP! Branch release-$v-string is already used.";
-    say "OK";
-}
+    has Bool $!in-progress = False;
+    method progress-item(Str $str) { print $str; $!in-progress++ }
+    method progress-dry-run(Str $str) { say '' if $!in-progress--; say "- $str" }
+    method progress-status(Str $str) { say $str; $!in-progress-- }
 
-sub verify-meta6(:$meta6!) {
-    my $meta6-filename = $meta6.IO;
-    my $meta;
-    if $meta6-filename.f {
-        $meta = META6.new(file => $meta6-filename);
-    }
-    else {
-        die "STOP! No $meta6 found!";
-    }
-
-    $meta;
-}
-
-sub begin-release(:$v-string!, :$releng!) {
-    print "Beginning release release-$v-string branch... ";
-    if $releng {
-        run(qqww< git checkout -b "release-$v-string" >);
-        say "OK";
-    }
-    else {
-        say '';
-        say "- Run: git checkout -b release-$v-string";
-    }
-}
-
-sub updating-changes(:$v-string!, :$releng!, :$changes!) {
-    print "Updating Changes... ";
-    my @release-changes = $changes.IO.lines;
-    die "STOP! $changes is missing \{\{\$NEXT}} line at top."
-        unless @release-changes[0] eq '{{$NEXT}}';
-
-    my $today = ~Date.today;
-
-    if $releng {
-        $changes.IO.spurt("$v-string\t$today\n@release-changes[0^..*].join("\n")");
-
-        run(qqww< git add $changes >);
-        run(qqww< git commit -m "releng $v-string: $changes" >);
-
-        say "OK";
-    }
-    else {
-        say '';
-        say "- Replace \{\{\$NEXT}} with $v-string and $today";
-        say "- Run: git add $changes";
-        say "- Run: get commit -m 'releng $v-string: $changes'";
-    }
-}
-
-sub updating-meta6(:$meta6!, :$vless-string!, :$v-string!, :$releng!, :$meta!, :$version!) {
-    print "Updating version in $meta6... ";
-
-    if $releng {
-        $meta.version = $version;
-        $meta6.IO.spurt($meta.to-json);
-
-        run(qqww< git add $meta6 >);
-        run(qqww< git commit -m "releng $v-string: $meta6" >);
-
-        say "OK";
-    }
-    else {
-        say '';
-        say "- Replacing: version with $vless-string in $meta6";
-        say "- Run: git add $meta6";
-        say "- Run: git commit -m 'releng $v-string: $meta6'";
-    }
-}
-
-sub updating-main-module(:$main-module!, :$main-pm6!, :$releng!, :$vless-string!, :$v-string!) {
-    print "Updating version in $main-module (in $main-pm6)... ";
-
-    if $releng {
-        my @main-lines = $main-pm6.IO.lines;
-        my $version-replaced = False;
-
-        {
-            my $main-fh    = $main-pm6.IO.open(:w);
-            LEAVE .close with $main-fh;
-
-            my regex package-line {
-                [ package | module | class | role | grammar ]
-                \s+
-                "$main-module"
+    has $!_meta;
+    method meta() {
+        $!_meta //= do {
+            my $meta6-filename = $!meta6.IO;
+            if $meta6-filename.f {
+                META6.new(file => $meta6-filename);
             }
-
-            my regex version-part {
-                ':ver<' <-[>]>+ '>'
+            else {
+                die "STOP! No $!meta6 found!";
             }
+        }
+    }
 
-            for @main-lines -> $line is copy {
-                if $line ~~ /<package-line>/ {
-                    die "STOP! Unable to find ':ver<...>' in package line."
-                        unless $line ~~ /<version-part>/;
+    has $!_main-module;
+    method main-module() { $!_main-module //= $.meta.name }
 
-                    $line ~~ s/<version-part>/:ver<$vless-string>/;
+    has $!_main-pm6;
+    method main-pm6() { $!_main-pm6 //= $.meta.provides.{ $.main-module } }
 
-                    $version-replaced++;
+    method TWEAK() {
+        $!v-string ~~ s/^v(\d)/$0/;
+        $!version = Version.new($!v-string);
+
+        $!v-string = $!version.perl;
+        $!vless-string = $!version.Str;
+    }
+
+    method verify-tag() {
+        self.progress-item: "Verifying $!v-string tag... ";
+        my $git-tag-l = run(qqww< git tag -l $!v-string >, :out);
+        $git-tag-l or die "STOP! `git tag -l $!v-string` exited with an error.";
+        $git-tag-l.out.slurp.trim eq ~$!v-string
+            and die "STOP! Tag $!v-string is already used.";
+        self.progress-status: "OK";
+    }
+
+    method verify-release() {
+        self.progress-item: "Verifying release-$!v-string branch... ";
+        my $git-branch-l = run(qqww< git branch --list "release-$!v-string" >, :out);
+        $git-branch-l or die "STOP! `git branch --list release-$!v-string` exited with an error.";
+        $git-branch-l.out.slurp.trim eq ~"release-$!v-string"
+            and die "STOP! Branch release-$!v-string is already used.";
+        self.progress-status: "OK";
+    }
+
+    method begin-release() {
+        self.progress-item: "Beginning release release-$!v-string branch... ";
+        if $!releng {
+            run(qqww< git checkout -b "release-$!v-string" >);
+            self.progress-status: "OK";
+        }
+        else {
+            self.progress-dry-run: "Run: git checkout -b release-$!v-string";
+        }
+    }
+
+    method updating-changes() {
+        self.progress-item: "Updating Changes... ";
+        my @release-changes = $!changes.IO.lines;
+        die "STOP! $!changes is missing \{\{\$NEXT}} line at top."
+            unless @release-changes[0] eq '{{$NEXT}}';
+
+        my $today = ~Date.today;
+
+        if $!releng {
+            $!changes.IO.spurt("$!v-string\t$today\n@release-changes[0^..*].join("\n")");
+
+            run(qqww< git add $!changes >);
+            run(qqww< git commit -m "releng $!v-string: $!changes" >);
+
+            self.progress-status: "OK";
+        }
+        else {
+            self.progress-dry-run: "Replace \{\{\$NEXT}} with $!v-string and $today";
+            self.progress-dry-run: "Run: git add $!changes";
+            self.progress-dry-run: "Run: get commit -m 'releng $!v-string: $!changes'";
+        }
+    }
+
+    method updating-meta6() {
+        self.progress-item: "Updating version in $!meta6... ";
+
+        if $!releng {
+            $.meta.version = $!version;
+            $!meta6.IO.spurt($.meta.to-json);
+
+            run(qqww< git add $!meta6 >);
+            run(qqww< git commit -m "releng $!v-string: $!meta6" >);
+
+            self.progress-status: "OK";
+        }
+        else {
+            self.progress-dry-run: "Replacing: version with $!vless-string in $!meta6";
+            self.progress-dry-run: "Run: git add $!meta6";
+            self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $!meta6'";
+        }
+    }
+
+    method updating-main-module() {
+        self.progress-item: "Updating version in $.main-module (in $.main-pm6)... ";
+
+        if $!releng {
+            my @main-lines = $.main-pm6.IO.lines;
+            my $version-replaced = False;
+
+            {
+                my $main-fh    = $.main-pm6.IO.open(:w);
+                LEAVE .close with $main-fh;
+
+                my $main-module = $.main-module; # for closing
+                my regex package-line {
+                    [ package | module | class | role | grammar ]
+                    \s+
+                    "$main-module"
                 }
 
-                $main-fh.say: $line;
+                my regex version-part {
+                    ':ver<' <-[>]>+ '>'
+                }
+
+                for @main-lines -> $line is copy {
+                    if $line ~~ /<package-line>/ {
+                        die "STOP! Unable to find ':ver<...>' in package line."
+                            unless $line ~~ /<version-part>/;
+
+                        $line ~~ s/<version-part>/:ver<$!vless-string>/;
+
+                        $version-replaced++;
+                    }
+
+                    $main-fh.say: $line;
+                }
             }
+
+            die "STOP! Failed to find package line for $.main-module in $.main-pm6"
+                unless $version-replaced;
+
+            run(qqww< git add $.main-pm6 >);
+            run(qqww< git commit -m "releng $!v-string: $.main-pm6" >);
+
+            self.progress-status: "OK";
         }
-
-        die "STOP! Failed to find package line for $main-module in $main-pm6"
-            unless $version-replaced;
-
-        run(qqww< git add $main-pm6 >);
-        run(qqww< git commit -m "releng $v-string: $main-pm6" >);
-
-        say "OK";
-    }
-    else {
-        say '';
-        say "- Replace :ver<...> for $main-module in $main-pm6 with :ver<$vless-string>";
-        say "- Run: git add $main-pm6";
-        say "- Run: git commit -m 'releng $v-string: $main-pm6'";
-    }
-}
-
-sub updating-readme(:$releng!, :$main-pm6!, :$readme!, :$v-string!) {
-    print "Updating README.md... ";
-
-    if $releng {
-        my $readme-md = run(qqww< perl6 -Ilib --doc=Markdown $main-pm6 >, :out);
-        $readme-md or die "STOP! `perl6 -Ilib --doc=Markdown $main-pm6` exited with an error.";
-        $readme.IO.spurt($readme-md.out.slurp);
-
-        my $git-status = run(qqww< git status --porcelain $readme >, :out);
-        $git-status or die "STOP! `git status --porcelain $readme` exited with an error.";
-        if $git-status.out.slurp.trim.starts-with("M") {
-            run(qqww< git add $readme >);
-            run(qqww< git commit -m 'releng $v-string: $readme' >);
+        else {
+            self.progress-dry-run: "Replace :ver<...> for $.main-module in $.main-pm6 with :ver<$!vless-string>";
+            self.progress-dry-run: "Run: git add $.main-pm6";
+            self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $.main-pm6'";
         }
-        say "OK";
     }
-    else {
-        say '';
-        say "- Run: perl6 --doc=Markdown $main-pm6 >! $readme";
-        say "- Run: git add $readme";
-        say "- Run: git commit -m 'releng $v-string: $readme'";
+
+    method updating-readme() {
+        self.progress-item: "Updating $!readme... ";
+
+        if $!releng {
+            my $readme-md = run(qqww< perl6 -Ilib --doc=Markdown $.main-pm6 >, :out);
+            $readme-md or die "STOP! `perl6 -Ilib --doc=Markdown $.main-pm6` exited with an error.";
+            $!readme.IO.spurt($readme-md.out.slurp);
+
+            my $git-status = run(qqww< git status --porcelain $!readme >, :out);
+            $git-status or die "STOP! `git status --porcelain $!readme` exited with an error.";
+            if $git-status.out.slurp.trim.starts-with("M") {
+                run(qqww< git add $!readme >);
+                run(qqww< git commit -m 'releng $!v-string: $!readme' >);
+            }
+            self.progress-status: "OK";
+        }
+        else {
+            self.progress-dry-run: "Run: perl6 --doc=Markdown $.main-pm6 >! $!readme";
+            self.progress-dry-run: "Run: git add $!readme";
+            self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $!readme'";
+        }
+    }
+
+    method tag-and-push-release() {
+        self.progress-item: "Tagging release $!v-string and pushing changes... ";
+
+        if $!releng {
+            #run(qqww< git push origin "release-$!v-string" >);
+            run(qqww< git tag $!v-string >);
+            run(qqww< git push origin $!v-string >);
+
+            self.progress-status: "OK";
+        }
+        else {
+            #self.progress-dry-run: "Run: git push origin release-$!v-string";
+            self.progress-dry-run: "Run: git tag $!v-string";
+            self.progress-dry-run: "Run: git push origin $!v-string";
+        }
+    }
+
+    method merge-release-and-reset() {
+        self.progress-item: "Merging release into master and resetting for development... ";
+
+        if $!releng {
+            run(qqww< git checkout master >);
+            run(qqww< git merge --no-ff "release-$!v-string" -m "releng $!v-string" >);
+
+            my $master-changes = $!changes.IO.slurp;
+            $!changes.IO.spurt("\{\{\$NEXT}}\n\n$master-changes");
+
+            run(qqww< git add $!changes >);
+            run(qqww< git commit -m "dev resume: $!changes" >);
+            run(qqww< git push origin master >);
+
+            self.progress-status: "OK";
+        }
+        else {
+            self.progress-dry-run: "Run: git checkout master";
+            self.progress-dry-run: "Run: git merge --no-ff release-$!v-string";
+            self.progress-dry-run: "Insert \{\{\$NEXT}} to the top of $!changes";
+            self.progress-dry-run: "Run: git add $!changes";
+            self.progress-dry-run: "Run: git commit -m 'dev resume: $!changes'";
+            self.progress-dry-run: "Run: git push origin master";
+        }
+    }
+
+    method await-travis-ci() {
+        self.progress-status: "Await Travis-CI Pass Here... TODO. Exiting.";
+    }
+
+    method run() {
+        self.verify-tag;
+        self.verify-release;
+
+        self.begin-release;
+
+        self.updating-changes;
+        self.updating-meta6;
+        self.updating-main-module;
+        self.updating-readme;
+
+        self.tag-and-push-release;
+        self.merge-release-and-reset;
+
+        self.await-travis-ci;
+
+        # self.progress-item: "Releasing $v-string to CPAN... ";
+        # run(qqww< p6-release --release $v-string >);
+        # say "OK";
     }
 }
 
-sub tag-and-push-release(:$v-string!, :$releng!) {
-    print "Tagging release $v-string and pushing changes... ";
-
-    if $releng {
-        #run(qqww< git push origin "release-$v-string" >);
-        run(qqww< git tag $v-string >);
-        run(qqww< git push origin $v-string >);
-
-        say "OK";
-    }
-    else {
-        say '';
-        #say "- Run: git push origin release-$v-string";
-        say "- Run: git tag $v-string";
-        say "- Run: git push origin $v-string";
-    }
-}
-
-sub merge-release-and-reset(:$releng!, :$changes!, :$v-string!) {
-    print "Merging release into master and resetting for development... ";
-
-    if $releng {
-        run(qqww< git checkout master >);
-        run(qqww< git merge --no-ff "release-$v-string" -m "releng $v-string" >);
-
-        my $master-changes = $changes.IO.slurp;
-        $changes.IO.spurt("\{\{\$NEXT}}\n\n$master-changes");
-
-        run(qqww< git add $changes >);
-        run(qqww< git commit -m "dev resume: $changes" >);
-        run(qqww< git push origin master >);
-
-        say "OK";
-    }
-    else {
-        say '';
-        say "- Run: git checkout master";
-        say "- Run: git merge --no-ff release-$v-string";
-        say "- Insert \{\{\$NEXT}} to the top of $changes";
-        say "- Run: git add $changes";
-        say "- Run: git commit -m 'dev resume: $changes'";
-        say "- Run: git push origin master";
-    }
-
-}
-
-sub await-travis-ci() {
-    say "Await Travis-CI Pass Here... TODO. Exiting.";
-}
+my %*SUB-MAIN-OPTS = :named-anywhere;
 
 sub MAIN(
-    Str $v-string is copy, #= The number of the release
+    Str $v-string, #= The number of the release
     Bool :$releng = False, #= Really engineer the release, otherwise do a dry run
     Str :$changes = 'Changes', #= Name of the Changes file
     Str :$meta6 = 'META6.json', #= Name of the META file
     Str :$readme = 'README.md' #= Name of the README.md file
 ) {
-    $v-string ~~ s/^v(\d)/$0/;
-    my $version = Version.new($v-string);
+    my $tool= Releng.new(
+        :$v-string,
+        :$releng,
+        :$changes,
+        :$meta6,
+        :$readme,
+    );
 
-    $v-string = $version.perl;
-    my $vless-string = $version.Str;
-
-    verify-tag(:$v-string);
-    verify-release(:$v-string);
-    my $meta = verify-meta6(:$meta6);
-
-    my $main-module = $meta.name;
-    my $main-pm6    = $meta.provides.{ $main-module };
-
-    begin-release(:$v-string, :$releng);
-
-    updating-changes(:$changes, :$releng, :$v-string);
-    updating-meta6(:$meta6, :$v-string, :$vless-string, :$releng, :$meta, :$version);
-    updating-main-module(:$main-module, :$main-pm6, :$releng, :$vless-string, :$v-string);
-    updating-readme(:$releng, :$main-pm6, :$readme, :$v-string);
-
-    tag-and-push-release(:$v-string, :$releng);
-    merge-release-and-reset(:$releng, :$changes, :$v-string);
-
-    await-travis-ci();
-
-    # print "Releasing $v-string to CPAN... ";
-    # run(qqww< p6-release --release $v-string >);
-    # say "OK";
+    $tool.run;
 }
