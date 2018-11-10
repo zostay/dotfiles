@@ -50,6 +50,7 @@ pre_paths=(
     $HOME/.rakudobrew/bin
     $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
     $GOPATH/bin
+    $HOME/zscript/bin
 )
 
 if which plenv > /dev/null; then eval "$(plenv init - zsh)"; fi
