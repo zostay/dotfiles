@@ -18,6 +18,8 @@ class Releng {
     method progress-dry-run(Str $str) { say '' if $!in-progress--; say "- $str" }
     method progress-status(Str $str) { say $str; $!in-progress-- }
 
+    method stop(Str $str) { die "STOP! $str" }
+
     has $!_meta;
     method meta() {
         $!_meta //= do {
@@ -26,7 +28,7 @@ class Releng {
                 META6.new(file => $meta6-filename);
             }
             else {
-                die "STOP! No $!meta6 found!";
+                self.stop: "No $!meta6 found!";
             }
         }
     }
@@ -48,18 +50,18 @@ class Releng {
     method verify-tag() {
         self.progress-item: "Verifying $!v-string tag... ";
         my $git-tag-l = run(qqww< git tag -l $!v-string >, :out);
-        $git-tag-l or die "STOP! `git tag -l $!v-string` exited with an error.";
+        $git-tag-l or self.stop: "`git tag -l $!v-string` exited with an error.";
         $git-tag-l.out.slurp.trim eq ~$!v-string
-            and die "STOP! Tag $!v-string is already used.";
+            and self.stop: "Tag $!v-string is already used.";
         self.progress-status: "OK";
     }
 
     method verify-release() {
         self.progress-item: "Verifying release-$!v-string branch... ";
         my $git-branch-l = run(qqww< git branch --list "release-$!v-string" >, :out);
-        $git-branch-l or die "STOP! `git branch --list release-$!v-string` exited with an error.";
+        $git-branch-l or self.stop: "`git branch --list release-$!v-string` exited with an error.";
         $git-branch-l.out.slurp.trim eq ~"release-$!v-string"
-            and die "STOP! Branch release-$!v-string is already used.";
+            and self.stop: "Branch release-$!v-string is already used.";
         self.progress-status: "OK";
     }
 
@@ -77,7 +79,7 @@ class Releng {
     method updating-changes() {
         self.progress-item: "Updating Changes... ";
         my @release-changes = $!changes.IO.lines;
-        die "STOP! $!changes is missing \{\{\$NEXT}} line at top."
+        self.stop: "$!changes is missing \{\{\$NEXT}} line at top."
             unless @release-changes[0] eq '{{$NEXT}}';
 
         my $today = ~Date.today;
@@ -140,7 +142,7 @@ class Releng {
 
                 for @main-lines -> $line is copy {
                     if $line ~~ /<package-line>/ {
-                        die "STOP! Unable to find ':ver<...>' in package line."
+                        self.stop: "Unable to find ':ver<...>' in package line."
                             unless $line ~~ /<version-part>/;
 
                         $line ~~ s/<version-part>/:ver<$!vless-string>/;
@@ -152,7 +154,7 @@ class Releng {
                 }
             }
 
-            die "STOP! Failed to find package line for $.main-module in $.main-pm6"
+            self.stop: "Failed to find package line for $.main-module in $.main-pm6"
                 unless $version-replaced;
 
             run(qqww< git add $.main-pm6 >);
@@ -172,11 +174,11 @@ class Releng {
 
         if $!releng {
             my $readme-md = run(qqww< perl6 -Ilib --doc=Markdown $.main-pm6 >, :out);
-            $readme-md or die "STOP! `perl6 -Ilib --doc=Markdown $.main-pm6` exited with an error.";
+            $readme-md or self.stop: "`perl6 -Ilib --doc=Markdown $.main-pm6` exited with an error.";
             $!readme.IO.spurt($readme-md.out.slurp);
 
             my $git-status = run(qqww< git status --porcelain $!readme >, :out);
-            $git-status or die "STOP! `git status --porcelain $!readme` exited with an error.";
+            $git-status or self.stop: "`git status --porcelain $!readme` exited with an error.";
             if $git-status.out.slurp.trim.starts-with("M") {
                 run(qqww< git add $!readme >);
                 run(qqww< git commit -m 'releng $!v-string: $!readme' >);
@@ -233,8 +235,64 @@ class Releng {
         }
     }
 
+    my constant $ssh-url-prefix = 'git@github.com:';
+    my constant $git-suffix     = '.git';
+
     method await-travis-ci() {
-        self.progress-status: "Await Travis-CI Pass Here... TODO. Exiting.";
+        self.progress-item: "Waiting for Travis-CI... ";
+
+        my $git-get-url = run(qqww< git remote get-url origin >, :out);
+        $git-get-url or self.stop: "Unable to run `git remote get-url origin`!";
+        my $origin-url = $git-get-url.out.slurp.trim;
+
+        my $slug = do if $origin-url.starts-with($ssh-url-prefix) && $origin-url.ends-with($git-suffix) {
+            my $start = $ssh-url-prefix.chars;
+            my $end   = $origin-url.chars - $git-suffix.chars - 1;
+            $origin-url.substr($start..$end);
+        }
+        else {
+            self.stop: "Unknown origin url $origin-url!";
+        }
+
+        if $!releng {
+            TRAVIS_CHECK: loop {
+                my $travis-branches = run(qqww< travis branches --org --repo $slug >, :out);
+                $travis-branches or self.stop: "Unable to run `travis branches --org -repo $slug`!";
+                for $travis-branches.out.lines -> $branch-info {
+                    my ($branch, $info) = $branch-info.split(/ ':' \s+ /);
+
+                    next unless $branch eq $!v-string;
+
+                    my ($build-num, $status, $comment) = $info.split(/\s+/, 3);
+
+                    if $status eq 'passed' {
+                        last TRAVIS_CHECK;
+                    }
+                    elsif $status eq 'errored' | 'failed' {
+                        self.stop: "Travis-CI test run failed.";
+                    }
+                }
+
+                sleep 60;
+            }
+
+            self.progress-status: "OK";
+        }
+
+        else {
+            self.progress-dry-run: "Monitor: travis branches --org --repo $slug";
+        }
+    }
+
+    method release() {
+        self.progress-item: "Releasing $!v-string to CPAN... ";
+        if $!releng {
+            run(qqww< p6-release --release $!v-string >);
+            say "OK";
+        }
+        else {
+            self.progress-dry-run: "Run: p6-release --release $!v-string";
+        }
     }
 
     method run() {
@@ -253,9 +311,7 @@ class Releng {
 
         self.await-travis-ci;
 
-        # self.progress-item: "Releasing $v-string to CPAN... ";
-        # run(qqww< p6-release --release $v-string >);
-        # say "OK";
+        self.release;
     }
 }
 
