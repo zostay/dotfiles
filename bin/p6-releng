@@ -181,7 +181,7 @@ class Releng {
             $git-status or self.stop: "`git status --porcelain $!readme` exited with an error.";
             if $git-status.out.slurp.trim.starts-with("M") {
                 run(qqww< git add $!readme >);
-                run(qqww< git commit -m 'releng $!v-string: $!readme' >);
+                run(qqww< git commit -m "releng $!v-string: $!readme" >);
             }
             self.progress-status: "OK";
         }
