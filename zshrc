@@ -24,14 +24,12 @@ fi
 
 export GOPATH="$HOME/projects/golang"
 
-if hash perl6 2> /dev/null; then
-    RAKUDO_VERSION=`perl6 -e '$*VM.version.Str.say ~~ s:r/\.\d//'`
-else
-    RAKUDO_VERSION=NA
-fi
+MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
+MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
 
 post_paths=(
-    /usr/local/Cellar/rakudo-star/$RAKUDO_VERSION/share/perl6/site/bin
+    $MOAR_BINDIR
+    $MOAR_SHAREDIR/perl6/site/bin
     /usr/local/Cellar/rakudo-star/bin
     /opt/local/bin
     /usr/local/sbin
