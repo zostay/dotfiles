@@ -91,6 +91,7 @@ link-file gitignore ~/.gitignore
 tmpl-link-file gitconfig ~/.gitconfig
 
 tmpl-link-file offlineimap.sh ~/.offlineimap.sh
+tmpl-link-file offlineimaprc ~/.offlineimaprc
 
 link-file label-mail.yml ~/.label-mail.yml
 

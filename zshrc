@@ -27,6 +27,8 @@ export GOPATH="$HOME/projects/golang"
 MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
 MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
 
+. $HOME/perl5/perlbrew/etc/bashrc
+
 post_paths=(
     $MOAR_BINDIR
     $MOAR_SHAREDIR/perl6/site/bin
@@ -39,8 +41,6 @@ post_paths=(
 pre_paths=(
     $HOME/bin
     $HOME/local/bin
-    $HOME/.plenv/bin
-    $HOME/.plenv/shims
     $HOME/Documents/android/platform-tools
     $HOME/Documents/android/tools
     $HOME/Documents/arm-cs-tools/bin
@@ -50,8 +50,6 @@ pre_paths=(
     $GOPATH/bin
     $HOME/zscript/bin
 )
-
-if which plenv > /dev/null; then eval "$(plenv init - zsh)"; fi
 
 for add_path in $post_paths; do
     if [ -d "$add_path" ]; then
