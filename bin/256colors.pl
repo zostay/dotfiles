@@ -13,7 +13,7 @@ for my $red (0 .. 5) {
             my $r = int ($red * 42.5);
             my $g = int ($green * 42.5);
             my $b = int ($blue * 42.5);
-            say "$i <- ($r, $g, $b)";
+            #say "$i <- ($r, $g, $b)";
             printf("\e]4;%d;rgb:%2.2x/%2.2x/%2.2x\e\\", $i, $r, $g, $b);
         }
     }
