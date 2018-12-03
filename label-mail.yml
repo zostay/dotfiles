@@ -92,3 +92,7 @@ ziprecruiter:
   - folder: Customer_Support
     days: 1
     clear: \Inbox
+
+  - folder: Admin-HR/Money
+    days: 1
+    clear: \Inbox
