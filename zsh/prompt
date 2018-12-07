@@ -22,7 +22,7 @@ case $USER; in
 esac
 
 typeset -i 10 hostnumber
-((hostnumber = 0x$(hostname | /usr/bin/crc32 /dev/stdin) % 6))
+((hostnumber = 0x$(hostname | crc32 /dev/stdin) % 6))
 
 typeset -i 10 ostype
 case `uname`; in
