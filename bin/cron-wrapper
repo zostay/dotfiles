@@ -2,4 +2,7 @@
 
 if which plenv > /dev/null; then eval "$(plenv init - zsh)"; fi
 
+source $HOME/perl5/perlbrew/etc/bashrc
+perlbrew use perl-5.28.0
+
 exec "$@"
