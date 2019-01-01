@@ -3,6 +3,8 @@ use v6;
 
 use META6;
 
+my constant @DECLARATIONS = < package module class role grammar model >;
+
 class Releng {
     has Str $.v-string;
     has Bool $.releng;
@@ -39,12 +41,39 @@ class Releng {
     has $!_main-pm6;
     method main-pm6() { $!_main-pm6 //= $.meta.provides.{ $.main-module } }
 
+    has $!_main-pod6;
+    method main-pod6() {
+        return $_ with $!_main-pod6;
+
+        # The .pm6 file for the main module
+        my $pm6 = $.meta.provides.{ $.main-module };
+
+        # Look to see if there's .pod6 and use it or fallback to .pm6
+        <.pod6 .pod>.map(-> $suffix {
+            $pm6.subst(/ '.pm' '6'? /, $suffix)
+        }).first({ .IO.f }) // $pm6;
+    }
+
     method TWEAK() {
         $!v-string ~~ s/^v(\d)/$0/;
         $!version = Version.new($!v-string);
 
         $!v-string = $!version.perl;
         $!vless-string = $!version.Str;
+    }
+
+    method all-pm-files() {
+        gather {
+            my @open = "lib".IO;
+            while @open.shift -> $file {
+                if $file.d {
+                    push @open, $file.dir;
+                }
+                elsif $file.f && $file ~~ / ".pm6" $/ {
+                    take $file;
+                }
+            }
+        }
     }
 
     method verify-tag() {
@@ -113,6 +142,7 @@ class Releng {
         }
         else {
             self.progress-dry-run: "Replacing: version with $!vless-string in $!meta6";
+            #self.progress-dry-run: "Replacing: provides with latest compunit info";
             self.progress-dry-run: "Run: git add $!meta6";
             self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $!meta6'";
         }
@@ -141,7 +171,7 @@ class Releng {
                 }
 
                 for @main-lines -> $line is copy {
-                    if $line ~~ /<package-line>/ {
+                    if !$version-replaced && $line ~~ /<package-line>/ {
                         self.stop: "Unable to find ':ver<...>' in package line."
                             unless $line ~~ /<version-part>/;
 
@@ -173,8 +203,8 @@ class Releng {
         self.progress-item: "Updating $!readme... ";
 
         if $!releng {
-            my $readme-md = run(qqww< perl6 -Ilib --doc=Markdown $.main-pm6 >, :out);
-            $readme-md or self.stop: "`perl6 -Ilib --doc=Markdown $.main-pm6` exited with an error.";
+            my $readme-md = run(qqww< perl6 -Ilib --doc=Markdown $.main-pod6 >, :out);
+            $readme-md or self.stop: "`perl6 -Ilib --doc=Markdown $.main-pod6` exited with an error.";
             $!readme.IO.spurt($readme-md.out.slurp);
 
             my $git-status = run(qqww< git status --porcelain $!readme >, :out);
@@ -186,7 +216,7 @@ class Releng {
             self.progress-status: "OK";
         }
         else {
-            self.progress-dry-run: "Run: perl6 --doc=Markdown $.main-pm6 >! $!readme";
+            self.progress-dry-run: "Run: perl6 --doc=Markdown $.main-pod6 >! $!readme";
             self.progress-dry-run: "Run: git add $!readme";
             self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $!readme'";
         }
