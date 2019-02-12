@@ -209,7 +209,7 @@ class Releng {
 
             my $git-status = run(qqww< git status --porcelain $!readme >, :out);
             $git-status or self.stop: "`git status --porcelain $!readme` exited with an error.";
-            if $git-status.out.slurp.trim.starts-with("M") {
+            if $git-status.out.slurp.trim.starts-with("M"|"A") {
                 run(qqww< git add $!readme >);
                 run(qqww< git commit -m "releng $!v-string: $!readme" >);
             }
