@@ -155,6 +155,8 @@ class Releng {
             my @main-lines = $.main-pm6.IO.lines;
             my $version-replaced = False;
 
+            my $save-may-not-be-necessary = False;
+
             {
                 my $main-fh    = $.main-pm6.IO.open(:w);
                 LEAVE .close with $main-fh;
@@ -167,13 +169,17 @@ class Releng {
                 }
 
                 my regex version-part {
-                    ':ver<' <-[>]>+ '>'
+                    ':ver<' $<ver> = [ <-[>]>+ ] '>'
                 }
 
                 for @main-lines -> $line is copy {
                     if !$version-replaced && $line ~~ /<package-line>/ {
-                        self.stop: "Unable to find ':ver<...>' in package line."
-                            unless $line ~~ /<version-part>/;
+                        if $line ~~ /<version-part>/ -> $/ {
+                            $save-may-not-be-necessary = so $!vless-string eq ~$<version-part><ver>;
+                        }
+                        else {
+                            self.stop: "Unable to find ':ver<...>' in package line.";
+                        }
 
                         $line ~~ s/<version-part>/:ver<$!vless-string>/;
 
@@ -188,7 +194,13 @@ class Releng {
                 unless $version-replaced;
 
             run(qqww< git add $.main-pm6 >);
-            run(qqww< git commit -m "releng $!v-string: $.main-pm6" >);
+            my sub commit-readme { run(qqww< git commit -m "releng $!v-string: $.main-pm6" >) }
+            if $save-may-not-be-necessary {
+                my $p = try commit-readme;
+            }
+            else {
+                commit-readme;
+            }
 
             self.progress-status: "OK";
         }
