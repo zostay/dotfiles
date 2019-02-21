@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+
+use v5.24;
+use warnings;
+
+use lib "$ENV{HOME}/bin";
+use YAML::Tiny;
+
+my $master_yaml = YAML::Tiny->new({
+  apiVersion => 'v1',
+  clusters => [],
+  contexts => [],
+  'current-context' => 'how-do-i-pick-one',
+  kind => 'Config',
+  preferences => {},
+  users => [],
+});
+
+my $master_config = $master_yaml->[0];
+
+my @config_files = glob "$ENV{HOME}/.kube/configs/*";
+for my $config_file (@config_files) {
+  my $config = YAML::Tiny->read($config_file)->[0];
+
+  my $current = $config->{'current-context'};
+
+  $master_config->{'current-context'} = $config->{'current-context'}
+    if $config->{'favorite-context'};
+
+  push @{ $master_config->{clusters} }, @{ $config->{clusters} };
+  push @{ $master_config->{contexts} },
+    map { $_->{context}{user} .= "-$current"; $_ }
+       @{ $config->{contexts} };
+  push @{ $master_config->{users} },
+    map { $_->{name} .= "-$current"; $_ }
+       @{ $config->{users} };
+}
+
+$master_yaml->write("$ENV{HOME}/.kube/config");
