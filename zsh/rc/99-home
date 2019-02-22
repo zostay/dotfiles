@@ -1,5 +1,5 @@
 # Final home hacks
-if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
+if [ `cat $HOME/.dotfile-environment` = 'home' ]; then
     alias ecr-login='eval $(aws ecr get-login --no-include-email --region us-east-1)'
 fi
 
