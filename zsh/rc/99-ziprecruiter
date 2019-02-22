@@ -1,3 +1,4 @@
+# Final work hacks
 if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   export STARTERVIEW=$HOME/ziprecruiter
 fi

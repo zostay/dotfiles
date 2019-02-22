@@ -1,0 +1,6 @@
+# Final home hacks
+if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
+    alias ecr-login='eval $(aws ecr get-login --no-include-email --region us-east-1)'
+fi
+
+# vim: ft=zsh
