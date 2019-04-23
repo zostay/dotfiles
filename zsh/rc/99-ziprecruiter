@@ -1,6 +1,9 @@
 # Final work hacks
 if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   export STARTERVIEW=$HOME/ziprecruiter
+
+  export GOPATH=$HOME/go
+  export PATH=$PATH:$HOME/go/bin
 fi
 
 # vim: ft=zsh
