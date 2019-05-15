@@ -8,12 +8,15 @@
 --ignore-file=is:jquery-ui.css
 
 --type-set 
-pdf=.pdf
+pdf:ext:pdf
 --nopdf
 
 --type-set
-rtf=.rtf
+rtf:ext:rtf
 --nortf
 
 --type-set
-tf=.tf
+tf:ext:tf,hcl
+
+--type-set
+docker:is:Dockerfile
