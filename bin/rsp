@@ -1,3 +1,7 @@
 #!/bin/zsh
 
-autossh $ZR_RS_JUMPBOX psql --host $ZR_RS_PROD --port 5439 -U $USER -d prod
+if [ -n "$ZR_RS_JUMPBOX" ]; then
+  autossh $ZR_RS_JUMPBOX psql --host $ZR_RS_PROD --port 5439 -U $USER -d prod
+else
+  psql --host $ZR_RS_PROD --port 5439 -U $USER -d prod
+fi
