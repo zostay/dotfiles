@@ -1,37 +1,33 @@
-#!/bin/zsh
+#!/usr/bin/env perl6
 
-usage() {
-  echo "usage: $(basename $0) [ -t ] [ -p ]"
-  echo
-  echo "Options:"
-  echo "\t-t\tAdd timestamp to the output"
-  echo "\t-p\tRemove priority from the output"
+use v6;
+use JSON::Fast;
+
+my %SUB-MAIN-OPTS = :named-anywhere;
+
+sub MAIN(
+  Str $filename = "-",             #= The file to defang (default=-)
+  Bool :c($add-category)  = False, #= Add categoy to output (default=False)
+  Bool :t($add-timestamp) = False, #= Add timestamp to output (default=False)
+  Bool :p($add-priority)  = True,  #= Add priority to output (default=True)
+) {
+  my $in;
+  if $filename eq '-' {
+    $in = $*IN;
+  }
+  else {
+    $in = $filename.IO.open(:r);
+  }
+
+  for $in.lines -> $line {
+    my $data = from-json($line);
+
+    my @items;
+    push @items, $data<timestamp_hires> // '-' if $add-timestamp;
+    push @items, $data<priority> // 'NONE'     if $add-priority;
+    push @items, $data<category> // '-'        if $add-category;
+    push @items, $data<message>  // '-';
+
+    say @items.join(' ');
+  }
 }
-
-ADD_PRIORITY=1
-ADD_TIMESTAMP=0
-
-while getopts "tp" opt; do
-  case $opt in
-    t)
-      ADD_TIMESTAMP=1
-      ;;
-
-    p)
-      ADD_PRIORITY=0
-      ;;
-  esac
-done
-shift $OPTIND-1
-
-FORMAT='\(.message)';
-
-if (($ADD_PRIORITY == 1)); then
-  FORMAT="\(.priority) $FORMAT"
-fi
-
-if (($ADD_TIMESTAMP == 1)); then
-  FORMAT="\(.timestamp_hires) $FORMAT"
-fi
-
-jq -r "\"$FORMAT\""
