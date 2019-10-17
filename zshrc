@@ -29,7 +29,7 @@ if hash perl6 2> /dev/null; then
   MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
 fi
 
-if -d $HOME/perl5/perlbrew/etc; then
+if [ -d $HOME/perl5/perlbrew/etc ]; then
   . $HOME/perl5/perlbrew/etc/bashrc
 fi
 
