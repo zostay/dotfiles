@@ -16,7 +16,7 @@ rtf:ext:rtf
 --nortf
 
 --type-set
-tf:ext:tf,hcl
+tf:ext:tf,hcl,tfvars
 
 --type-set
 docker:is:Dockerfile
