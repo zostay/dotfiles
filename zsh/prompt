@@ -38,10 +38,10 @@ case `uname`; in
 
 esac
 
-
-if [ -n $SAFEPLACE ]; then
+. ~/.zshrc.local
+if [ "$SAFEPLACE" = "" ]; then
     HOSTCOLOR="$FG[160]"
-elif [[ "$SAFEPLACE" == "meh" ]]; then
+elif [ "$SAFEPLACE" = "meh" ]; then
     HOSTCOLOR="$FG[226]"
 else
     HOSTCOLOR="$FG[$ostype]"
