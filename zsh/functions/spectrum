@@ -28,3 +28,7 @@ done
 function xyz_index() {
     echo $((16 + ($1 * 36) + ($2 * 6) + $3))
 }
+
+function rgb_fg() {
+    echo "\x1b[38;2;$1;$2;${3}m";
+}

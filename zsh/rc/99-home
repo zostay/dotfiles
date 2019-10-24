@@ -1,6 +1,8 @@
 # Final home hacks
 if [ `cat $HOME/.dotfile-environment` = 'home' ]; then
     alias ecr-login='eval $(aws ecr get-login --no-include-email --region us-east-2)'
+
+    export SAFEPLACE=yep
 fi
 
 # vim: ft=zsh
