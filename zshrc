@@ -123,7 +123,7 @@ pm() { vim `perldoc -l $1`; }
 
 alias tmux="tmux -2"
 
-if [ -d ~/.colorist ]; then
+if [[ -d $HOME/.colorist ]]; then
     . $HOME/.colorist/bashrc
 fi
 
