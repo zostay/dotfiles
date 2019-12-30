@@ -1,3 +1,5 @@
+--follow
+
 --ignore-dir=.git
 --type-add=yaml=.conf
 --ignore-dir=target
@@ -20,3 +22,6 @@ tf:ext:tf,hcl,tfvars
 
 --type-set
 docker:is:Dockerfile
+
+--type-set
+perl6:ext:pm6,p6,pl6,pm,t,t6,pod,pod6,nqp,raku,rakutest,rakudoc
