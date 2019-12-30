@@ -147,9 +147,6 @@ if [ -d /usr/local/lib/node_modules ]; then
     export NODE_PATH=/usr/local/lib/node_modules
 fi
 
-export ACK_OPTIONS="--follow"
-export ACK_COLOR_MATCH="bold yellow on_black"
-
 alias pl='perldoc -l'
 alias less='less -F'
 alias grep='grep --color=auto'
