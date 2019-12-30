@@ -52,9 +52,6 @@
 [submodule "vim/bundle/dart-vim-plugin"]
 	path = vim/bundle/dart-vim-plugin
 	url = git@github.com:dart-lang/dart-vim-plugin.git
-[submodule "vim/bundle/vim-perl6"]
-	path = vim/bundle/vim-perl6
-	url = git@github.com:vim-perl/vim-perl6.git
 [submodule "vim/bundle/vim-terraform"]
 	path = vim/bundle/vim-terraform
 	url = https://github.com/hashivim/vim-terraform
