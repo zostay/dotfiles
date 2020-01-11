@@ -62,6 +62,18 @@ class Releng {
         $!vless-string = $!version.Str;
     }
 
+    method working-copy-provides(--> Hash:D) {
+        my $repo = CompUnit::Repository::FileSystem.new(
+            prefix => "lib",
+        );
+
+        % = gather for $repo.distribution.meta.<provides>.kv -> $k, $v {
+            my $git-status = run(qqww< git status --porcelain $v >, :out);
+            $git-status or self.stop: "`git status --porcelain $v` exited with an error.";
+            take $k => $v unless $git-status.out.slurp.trim.starts-with("?");
+        }
+    }
+
     method all-pm-files() {
         gather {
             my @open = "lib".IO;
@@ -133,6 +145,7 @@ class Releng {
 
         if $!releng {
             $.meta.version = $!version;
+            $.meta.provides = self.working-copy-provides;
             $!meta6.IO.spurt($.meta.to-json);
 
             run(qqww< git add $!meta6 >);
@@ -142,7 +155,7 @@ class Releng {
         }
         else {
             self.progress-dry-run: "Replacing: version with $!vless-string in $!meta6";
-            #self.progress-dry-run: "Replacing: provides with latest compunit info";
+            self.progress-dry-run: "Replacing: provides with latest compunit info";
             self.progress-dry-run: "Run: git add $!meta6";
             self.progress-dry-run: "Run: git commit -m 'releng $!v-string: $!meta6'";
         }
