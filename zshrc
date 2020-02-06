@@ -130,8 +130,12 @@ fi
 . $HOME/.zsh/functions/spectrum
 . $HOME/.zsh/prompt
 
-autoload -U compinit
-compinit
+if [[ -d /usr/local/share/zsh/site-functions ]]; then
+  fpath=(/usr/local/share/zsh/site-functions $fpath)
+fi
+
+autoload -Uz compinit
+compinit -u
 
 zmodload -a colors
 zmodload -a autocomplete
