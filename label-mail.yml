@@ -96,3 +96,11 @@ ziprecruiter:
   - folder: Admin-HR/Money
     days: 1
     clear: \Inbox
+
+  - folder: INBOX
+    sender: calendar-notification@google.com
+    label: Schedule
+
+  - folder: Schedule
+    days: 7
+    clear: \Inbox

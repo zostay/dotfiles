@@ -165,6 +165,7 @@ sub remove_keyword {
 
 has _from => ( is => 'ro', lazy => 1, builder => '_build__from' );
 has _to => ( is => 'ro', lazy => 1, builder => '_build__to' );
+has _sender => ( is => 'ro', lazy => 1, builder => '_build__sender' );
 
 sub _build__from {
     my $self = shift;
@@ -176,9 +177,14 @@ sub _build__to {
     [ Email::Address->parse($self->mime->header_str('To')) ]
 }
 
+sub _build__sender {
+    my $self = shift;
+    [ Email::Address->parse($self->mime->header_str('Sender')) ]
+}
+
 sub from { @{ shift->_from } }
 sub to { @{ shift->_to } }
-
+sub sender { @{ shift->_sender } }
 
 sub apply_rule {
     my ($self, $c) = @_;
@@ -261,6 +267,14 @@ sub apply_rule {
             return (0, 'message has no To header') unless $self->to;
             return (0, 'message To header does not match to tests') if none { $_->address =~ /@\Q$c->{to_domain}\E$/ } $self->to;
             return (1, 'message To header matches to domain test');
+        },
+
+        sub {
+            my ($self, $c, $tests) = @_;
+            return (1, 'no sender test') unless defined $c->{sender};
+            $$tests++;
+            return (0, 'message Sender header does not match sender test') if none { $_->address eq $c->{sender} } $self->sender;
+            return (1, 'message Sender header matches sender test');
         },
 
         sub {
