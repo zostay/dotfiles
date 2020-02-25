@@ -4,7 +4,7 @@
 #
 # http://www.simplisticcomplexity.com/2008/03/13/show-your-git-branch-name-in-your-prompt/
 git_branch() {
-    git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/%{'"$FG[111]"'%}%{'"$FG[33]"'%}\1/'
+    git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/%{'"$FG[111]"'%}%{'"$FG[33]"'%}\1/'
 }
 
 integer amime
