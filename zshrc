@@ -1,7 +1,7 @@
 if [ `uname` = "Darwin" ]; then
     alias ls="ls -G"
 elif [ `uname` = "Linux" ]; then
-    umask 077
+    #umask 077
 
     alias ls='ls --color=auto'
 fi
