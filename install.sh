@@ -82,6 +82,8 @@ link-file vim ~/.vim
 link-file vim/init.vim ~/.vimrc
 link-file vim $XDG_CONFIG_HOME/nvim
 
+link-file kitty $XDG_CONFIG_HOME/kitty
+
 link-file zsh ~/.zsh
 link-file zshrc ~/.zshrc
 link-file zshenv ~/.zshenv
