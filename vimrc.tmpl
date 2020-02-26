@@ -100,7 +100,7 @@ if !exists("*Eatchar")
    endfunc
 endif
 
-autocmd FileType perl,perl6,json,zsh,sh autocmd BufWritePre <buffer> :%s/\s\+$//e
+autocmd FileType perl,raku,json,zsh,sh autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " Git
 autocmd BufNewFile,BufRead *.git/COMMIT_EDITMSG setf gitcommit
@@ -139,7 +139,7 @@ autocmd BufReadPost *
   \ endif
 
 autocmd BufEnter *.p6w
-    \ set ft=perl6
+    \ set ft=raku
 
 autocmd BufEnter *.mustache
     \ set ft=html
@@ -181,8 +181,8 @@ autocmd FileType python
 autocmd BufEnter *.psgi
     \ set ft=perl
 
-autocmd BufEnter *.pm6
-    \ set ft=perl6
+autocmd BufEnter *.pm6,*.raku,*.p6,*.rakudoc,*.rakutest
+    \ set ft=raku
 
 autocmd FileType tex,notes
 	\ set formatoptions=tcrqn |
@@ -210,7 +210,7 @@ autocmd FileType perl,pod
     \ setlocal wrap |
     \ setlocal lbr
 
-autocmd FileType perl6
+autocmd FileType raku
     \ setlocal wrap |
     \ setlocal lbr |
     \ setlocal nospell |
