@@ -53,6 +53,7 @@ pre_paths=(
     $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
     $GOPATH/bin
     $HOME/zscript/bin
+    /usr/local/opt/ruby/bin
 )
 
 for add_path in $post_paths; do
