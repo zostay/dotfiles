@@ -1,0 +1,36 @@
+#!/bin/zsh
+
+NAME=$1
+DIR=$2
+
+if [[ "$NAME" == "" ]]; then
+    NAME=main
+fi
+
+if [[ "$DIR" == "" ]]; then
+    if [[ "$NAME" != "main" ]]; then
+        DIR="$NAME"
+    else
+        DIR="$HOME"
+    fi
+fi
+
+if [[ "${DIR:0:1}" != "/" ]]; then
+    DIR="$HOME/projects/$DIR"
+fi
+
+
+if tmux list-sessions | grep '(attached)' | grep "^$NAME:" >/dev/null; then
+    echo "This is the [$NAME] session!";
+else
+    if [[ -n "$TMUX" ]]; then
+        if ! tmux has-session -t "$NAME" &>/dev/null; then
+            tmux new-session -d -c "$DIR" -s "$NAME"
+        fi
+        tmux switch-client -t "$NAME"
+    elif tmux has-session -t "$NAME" &>/dev/null; then
+        tmux attach-session -t "$NAME"
+    else
+        tmux new-session -A -c "$DIR" -s "$NAME"
+    fi
+fi
