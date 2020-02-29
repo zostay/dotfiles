@@ -40,6 +40,7 @@ post_paths=(
     /opt/local/bin
     /usr/local/sbin
     /sw/bin
+    /snap/bin
 )
 
 pre_paths=(
@@ -161,6 +162,10 @@ alias irc='autossh -n irssi qubling'
 for RC in $HOME/.zsh/rc/*(n); do
     source $RC
 done
+
+if [[ -d /var/lib/snapd/desktop ]]; then
+    export XDG_DATA_DIRS="$XDG_DATA_DIRS:/var/lib/snapd/desktop/"
+fi
 
 if [ -e $HOME/.zshrc.local ]; then
     source $HOME/.zshrc.local;
