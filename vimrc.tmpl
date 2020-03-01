@@ -349,4 +349,12 @@ call matchadd('ColorColumn', '\%81v', 100)
 let g:vim_markdown_folding_disabled = 1
 set nofoldenable
 
+fu! SaveSess()
+    if len($VIM_SESSION)
+        execute 'mksession! $VIM_SESSION'
+    endif
+endfunction
+
+autocmd VimLeave * call SaveSess()
+
 finish
