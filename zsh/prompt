@@ -62,7 +62,7 @@ shorten_hostname() {
 if [ "$ASCIINEMA_REC" = 1 ]; then
     PROMPT=$'%{$BG[236]$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
 else
-    PROMPT=$'%{$BG[142]$FG[0]%}  %T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
+    PROMPT=$'%{$BG[142]$FG[0]%} ⌚ %T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
 fi
 
 export PROMPT
