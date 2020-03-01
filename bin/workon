@@ -10,7 +10,7 @@ initialize_session () {
 
     VIM_SESSION="$SESSION_DIR/.session.vim"
 
-    tmux new-window -n edit -c "$SESSION_DIR" -t "$SESSION_NAME:" "VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
+    tmux new-window -n edit -c "$SESSION_DIR" -t "$SESSION_NAME:" "resize; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
 
     case $SHORT_DIR in
         raku)
@@ -21,8 +21,11 @@ initialize_session () {
     tmux select-window -t "$SESSION_NAME:0"
 }
 
+SHORTEN=0
 if [[ "$NAME" == "" ]]; then
     NAME=stuff
+else
+    SHORTEN=1
 fi
 
 if [[ "$DIR" == "" ]]; then
@@ -31,6 +34,11 @@ if [[ "$DIR" == "" ]]; then
     else
         DIR="$HOME"
     fi
+fi
+
+if (( $SHORTEN )); then
+    # workon 0/dotfiles => dotfiles
+    NAME=$( basename $NAME )
 fi
 
 if [[ "${DIR:0:1}" != "/" ]]; then
