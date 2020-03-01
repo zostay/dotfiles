@@ -11,7 +11,7 @@ set -g default-terminal "xterm-256color"
 set-option -ga terminal-overrides ",xterm-256color:Tc"
 
 set -g status-right "#(uptime|awk '{print $11}') #(date)"
-set -g status-left "#{session_name} "
+set -g status-left "[#{session_name}] "
 set -g status-left-length 20
 
 set -s escape-time 0
