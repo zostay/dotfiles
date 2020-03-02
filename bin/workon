@@ -14,7 +14,7 @@ initialize_session () {
 
     case $SHORT_DIR in
         raku)
-            tmux new-window -n repl -c "$SESSION_DIR" -t "$SESSION_NAME:" "raku"
+            add-repl "$SESSION_NAME" "$SESSION_DIR"
             ;;
     esac
 

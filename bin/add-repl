@@ -1,0 +1,10 @@
+#!/bin/zsh
+
+SESSION_NAME="$1"
+SESSION_DIR="$2"
+
+if [[ -n "$SESSION_DIR" ]]; then
+    tmux new-window -n repl -c "$SESSION_DIR" -t "$SESSION_NAME:" "raku"
+else
+    tmux new-window -n repl "raku"
+fi
