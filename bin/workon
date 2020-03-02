@@ -10,7 +10,7 @@ initialize_session () {
 
     VIM_SESSION="$SESSION_DIR/.session.vim"
 
-    tmux new-window -n edit -c "$SESSION_DIR" -t "$SESSION_NAME:" "resize; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
+    tmux new-window -n edit -c "$SESSION_DIR" -t "$SESSION_NAME:" "$HOME/bin/resize-window-fix; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
 
     case $SHORT_DIR in
         raku)

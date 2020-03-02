@@ -45,6 +45,7 @@ post_paths=(
     /usr/local/sbin
     /sw/bin
     /snap/bin
+    /opt/X11/bin
 )
 
 pre_paths=(

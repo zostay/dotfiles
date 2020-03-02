@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+source $HOME/.zshrc
+resize || echo The resize command is missing. Install xterm.
+
+# if [[ -x /usr/bin/resize ]]; then
+#   /usr/bin/resize
+# elif [[ -x /opt/X11/bin/resize ]]; then
+#   /opt/X11/bin/resize
+# else
+#   echo Cannot locate resize command.
+# fi

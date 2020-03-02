@@ -355,7 +355,13 @@ fu! SaveSession()
     endif
 endfunction
 
+fu! SaveSessionPeriodically(arg)
+  call SaveSession()
+endfunction
+
 autocmd VimLeave * call SaveSession()
-let timer = timer_start(300, 'SaveSession', {'repeat': 1})
+let timer = timer_start(300, 'SaveSessionPeriodically', {'repeat': 1})
 
 finish
+
+# vim: ft=vim
