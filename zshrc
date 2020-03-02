@@ -22,7 +22,11 @@ else
     export EDITOR="vim"
 fi
 
-export GOPATH="$HOME/projects/golang"
+if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
+  export GOPATH="$HOME/go"
+else
+  export GOPATH="$HOME/projects/golang"
+fi
 
 if hash perl6 2> /dev/null; then
   MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
