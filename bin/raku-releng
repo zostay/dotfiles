@@ -13,6 +13,7 @@ class Releng {
     has Str $.v-string;
     has Bool $.releng;
     has Bool $.overwrite;
+    has Bool $.resume;
     has Str $.changes;
     has Str $.meta6;
     has Str $.readme;
@@ -109,6 +110,16 @@ class Releng {
         $git-branch-l or self.stop: "`git branch --list release-$!v-string` exited with an error.";
 
         my $in-use = $git-branch-l.out.slurp.trim.ends-with("release-$!v-string");
+
+        if $!resume {
+            if $in-use {
+                self.progress-status: "OK";
+                return;
+            }
+            else {
+                self.stop: "Breanch release-$!v-string does not exist. Cannot resume relesae.";
+            }
+        }
 
         !$!overwrite and $in-use and self.stop: "Branch release-$!v-string is already used.";
 
@@ -389,15 +400,17 @@ class Releng {
         self.verify-tag;
         self.verify-release;
 
-        self.begin-release;
+        unless $!resume {
+            self.begin-release;
 
-        self.updating-changes;
-        self.updating-meta6;
-        self.updating-main-module;
-        self.updating-readme;
+            self.updating-changes;
+            self.updating-meta6;
+            self.updating-main-module;
+            self.updating-readme;
 
-        self.push-release-branch;
-        self.await-travis-ci;
+            self.push-release-branch;
+            self.await-travis-ci;
+        }
 
         self.tag-and-push-release;
         self.merge-release-and-reset;
@@ -412,6 +425,7 @@ sub MAIN(
     Str $v-string, #= The number of the release
     Bool :$releng = False, #= Really engineer the release, otherwise do a dry run
     Bool :$overwrite = False, #= Overwrite previous release branch
+    Bool :$resume = False, #= Resume a previous release that stopped during the Travis-CI check
     Str :$changes = 'Changes', #= Name of the Changes file
     Str :$meta6 = 'META6.json', #= Name of the META file
     Str :$readme = 'README.md' #= Name of the README.md file
@@ -420,6 +434,7 @@ sub MAIN(
         :$v-string,
         :$releng,
         :$overwrite,
+        :$resume,
         :$changes,
         :$meta6,
         :$readme,
