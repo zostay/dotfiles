@@ -124,7 +124,11 @@ class Release {
                 Content-Type => $fd.content-type,
                 content => $fd.content,
             );
-            my $secret = qqx<zostay-get-secret "Perl PAUSE">.trim;
+
+            my $zostay-get-secret = run(qqww< zostay-get-secret "Perl PAUSE" >, :out);
+            $zostay-get-secret or self.stop: qq[`zostay-get-secret "Perl Pause"` exited with an error.];
+
+            my $secret = $zostay-get-secret.out.slurp.trim;
             my $auth = encode-base64("hanenkamp:$secret", :str);
             $upload-req.field(Authorization => "Basic $auth");
             #my $fh = 'test.request'.IO.open(:w);
