@@ -66,7 +66,7 @@ class Release {
     }
 
     method verify-meta() {
-        self.progress-item: "Verify that META6 version matches tag $.v-string.";
+        self.progress-item: "Verify that META6 version matches tag $.v-string... ";
 
         # Make sure version and tag match
         $.meta.version.perl eq $.v-string
@@ -76,7 +76,7 @@ class Release {
     }
 
     method verify-main-module() {
-        self.progress-item: "Verify that main module version matches tag $.v-string.";
+        self.progress-item: "Verify that main module version matches tag $.v-string.... ";
 
         # Make sure the version and main module :ver match
         my $main-module  = $.meta.name;
