@@ -138,7 +138,7 @@ fi
 . $HOME/.zsh/prompt
 
 if [[ -d /usr/local/share/zsh/site-functions ]]; then
-  fpath=(/usr/local/share/zsh/site-functions $fpath)
+  fpath=($HOME/.zsh/comp /usr/local/share/zsh/site-functions $fpath)
 fi
 
 autoload -Uz compinit

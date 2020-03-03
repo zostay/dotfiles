@@ -1,0 +1,14 @@
+#compdef _workon workon
+
+function _workon {
+    local line
+
+    _arguments '1:name:_workingon' '2:description:_path_files'
+}
+
+function _workingon {
+    local N
+    N=$(echo "$HOME/projects/" | wc -m)
+    _values 'names' $(workingon -o)
+    _values 'names' $(ls -d $HOME/projects/*/* | cut -b$N-)
+}
