@@ -3,14 +3,12 @@
 NAME=$1
 DIR=$2
 
-initialize_session () {
+function initialize_session {
     SESSION_NAME="$1"
     SESSION_DIR="$2"
     SHORT_DIR=$( basename $( dirname "$SESSION_DIR" ) )
 
-    VIM_SESSION="$SESSION_DIR/.session.vim"
-
-    tmux new-window -n edit -c "$SESSION_DIR" -t "$SESSION_NAME:" "$HOME/bin/resize-window-fix; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
+    add-editor "$SESSION_NAME" "$SESSION_DIR"
 
     case $SHORT_DIR in
         raku)
@@ -42,9 +40,12 @@ if (( $SHORTEN )); then
 fi
 
 if [[ "${DIR:0:1}" != "/" ]]; then
-    DIR="$HOME/projects/$DIR"
+    if [[ -d "$HOME/projects/$DIR" ]]; then
+        DIR="$HOME/projects/$DIR"
+    else
+        DIR="$HOME"
+    fi
 fi
-
 
 if tmux list-sessions | grep '(attached)' | grep "^$NAME:" >/dev/null; then
     echo "This is the [$NAME] session!";

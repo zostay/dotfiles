@@ -1,7 +1,11 @@
 #!/bin/zsh
 
-if [[ "$1" == "-o" ]]; then
-    tmux list-sessions | grep -v '(attached)' | awk '{print $1}' | sed 's/.$//'
+if tmux list-sessions >/dev/null; then
+    if [[ "$1" == "-o" ]]; then
+        tmux list-sessions | grep -v '(attached)' | awk '{print $1}' | sed 's/.$//'
+    else
+        tmux list-sessions | awk '{print $10,$1}' | sed 's/.$//;s/(attached)/*/;s/^ /  /'
+    fi
 else
-    tmux list-sessions | awk '{print $10,$1}' | sed 's/.$//;s/(attached)/*/;s/^ /  /'
+    exit 1
 fi

@@ -9,6 +9,8 @@ function _workon {
 function _workingon {
     local N
     N=$(echo "$HOME/projects/" | wc -m)
-    _values 'names' $(workingon -o)
+    if [[ -n $(workingon -o) ]]; then
+        _values 'names' $(workingon -o)
+    fi
     _values 'names' $(ls -d $HOME/projects/*/* | cut -b$N-)
 }

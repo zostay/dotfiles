@@ -1,0 +1,48 @@
+#!/bin/zsh
+
+SESSION_NAME="$1"
+SESSION_DIR="$2"
+
+function vim_session {
+    SESSION_NAME="$1"
+    SESSION_DIR="$2"
+
+    if [[ "$SESSION_DIR" == "$HOME" ]]; then
+        if [[ -n "$SESSION_NAME" ]]; then
+            mkdir -p "$HOME/.vim/sessions"
+            VIM_SESSION="$HOME/.vim/sessions/$SESSION_NAME.vim"
+        else
+            VIM_SESSION=""
+        fi
+    else
+        VIM_SESSION="$SESSION_DIR/.session.vim"
+    fi
+
+    if [[ -n "$VIM_SESSION" ]]; then
+        touch "$VIM_SESSION"
+    fi
+
+    echo "$VIM_SESSION"
+}
+
+if [[ -z "$SESSION_DIR" ]]; then
+    SESSION_DIR="$PWD"
+fi
+
+VIM_SESSION=$(vim_session "$SESSION_NAME" "$SESSION_DIR")
+
+if [[ -n "$SESSION_DIR" && -n "$VIM_SESSION" ]]; then
+    tmux new-window \
+        -n edit \
+        -c "$SESSION_DIR" \
+        -t "$SESSION_NAME:" \
+        "$HOME/bin/resize-window-fix; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
+elif [[ -n "$VIM_SESSION" ]]; then
+    tmux new-window \
+        -n edit \
+        "$HOME/bin/resize-window-fix; VIM_SESSION='$VIM_SESSION' vim -S '$VIM_SESSION'"
+else
+    tmux new-window \
+        -n edit \
+        "$HOME/bin/resize-window-fix; vim"
+fi
