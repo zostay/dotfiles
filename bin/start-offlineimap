@@ -12,4 +12,5 @@ docker run --name offlineimap                   \
   --env EMAIL="$MYEMAIL"                        \
   --restart=always                              \
   --cpu-quota=5000                              \
+  -u $UID                                       \
   zostay/offlineimap
