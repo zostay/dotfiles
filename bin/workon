@@ -47,6 +47,8 @@ if [[ "${DIR:0:1}" != "/" ]]; then
     fi
 fi
 
+NAME="${NAME//\./-}"
+
 if tmux list-sessions | grep '(attached)' | grep "^$NAME:" >/dev/null; then
     echo "This is the [$NAME] session!";
 else
