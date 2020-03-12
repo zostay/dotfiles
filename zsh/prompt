@@ -3,7 +3,7 @@
 # Idea taken from
 #
 # http://www.simplisticcomplexity.com/2008/03/13/show-your-git-branch-name-in-your-prompt/
-git_branch() {
+function _prompt_git_branch {
     git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/%{'"$FG[111]"'%}%{'"$FG[33]"'%}\1/'
 }
 
@@ -45,7 +45,7 @@ else
     HOSTCOLOR="$FG[$ostype]"
 fi
 
-shorten_hostname() {
+function _prompt_shorten_hostname {
     SH=$(hostname -s)
     case $SH in
         sandbox-sterling-*)
@@ -61,14 +61,30 @@ shorten_hostname() {
     esac
 }
 
+function _prompt_clockface {
+    HOUR=$(date +'%I')
+    MINUTE=$(date +'%M')
+    CLOCKFACES00=(🕐 🕑 🕒 🕓 🕔 🕕 🕖 🕗 🕘 🕙 🕚 🕛)
+    CLOCKFACES30=(🕜 🕝 🕞 🕟 🕠 🕡 🕢 🕣 🕤 🕥 🕦 🕧)
+
+    if (( $MINUTE <= 15)); then
+        echo $CLOCKFACES00[$HOUR]
+    elif (( $MINUTE <= 45)); then
+        echo $CLOCKFACES30[$HOUR]
+    else
+        MODIFIED_HOUR=$(( ($HOUR + 1) % 12 ))
+        echo $CLOCKFACES00[$MODIFIED_HOUR]
+    fi
+}
+
 if [ "$ASCIINEMA_REC" = 1 ]; then
-    PROMPT=$'%{$BG[236]$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
+    PROMPT=$'%{$BG[236]$FG[39]%}%1d%{$FG[33]%}$(_prompt_git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
 else
-    PROMPT=$'%{$BG[142]$FG[0]%} ⌚%{ %}%T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%}$MAC_SPACE %{$FX[reset]%}'
+    PROMPT=$'%{$BG[142]$FG[0]%} $(_prompt_clockface) %T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(_prompt_git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%}$MAC_SPACE %{$FX[reset]%}'
 fi
 
 export PROMPT
 
-#export PROMPT=$'[%*] %{\e[01;36m%}%n@%m %{\e[01;34m%}%1d$(git_branch)%# %{\e[00m%}'
+#export PROMPT=$'[%*] %{\e[01;36m%}%n@%m %{\e[01;34m%}%1d$(_prompt_git_branch)%# %{\e[00m%}'
 
 # vim: ft=zsh ts=4 sts=4 sw=4
