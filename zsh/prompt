@@ -26,7 +26,7 @@ case `uname`; in
     Darwin*)
         ostype=`xyz_index 0 5 5`
         ((ostype = $ostype - $hostnumber * 6))
-        MAC_SPACE=" "
+        MAC_SPACE=""
         ;;
 
     *)
