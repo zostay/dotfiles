@@ -1,4 +1,19 @@
 ---
+oses:
+  '*':
+    kitty.conf:
+      adjust_line_height: 0
+      adjust_column_width: 0
+    tmux.conf:
+      reattach_to_user_namespace: 0
+
+  darwin:
+    kitty.conf:
+      adjust_line_height: -1
+      adjust_column_width: -1
+    tmux.conf:
+      reattach_to_user_namespace: 1
+
 environments:
   '*':
     muttrc:
@@ -17,6 +32,9 @@ environments:
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_HOME
+    offlineimaprc:
+      email:
+        __SECRET__: GIT_EMAIL_HOME
     signature:
       line1: https://sterling.hanenkamp.com/stfl/
     vimrc:
@@ -32,6 +50,9 @@ environments:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
     offlineimap.sh:
+      email:
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
+    offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
     signature:

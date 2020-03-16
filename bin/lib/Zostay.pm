@@ -15,6 +15,7 @@ our @EXPORT_OK = qw(
     emkpath echdir esystem esymlink erename
     %FG %BG %FX xyz_color
     get_secret inject_secrets
+    dotfiles_os
     dotfiles_environment
     dotfiles_config_raw
     dotfiles_config
@@ -70,6 +71,10 @@ sub esymlink($$) {
 sub erename($$) {
     say "$FG{167}mv $FG{179}$_[0] $FG{181}$_[1]$FX{reset}";
     rename $_[0], $_[1];
+}
+
+sub dotfiles_os {
+    return $^O;
 }
 
 sub dotfiles_environment {
@@ -151,9 +156,55 @@ sub inject_secrets($;$) {
     return $thing;
 }
 
-sub dotfiles_config_raw {
-    my ($name, $env) = @_;
+sub _merge_configs {
+    my (@layers) = @_;
 
+    # $layer1 = {
+    #   app => {
+    #       key1 => 'a',
+    #       key3 => 'b',
+    #   }
+    # }
+    # $layer2 = {
+    #   app => {
+    #      key1 => 'c',
+    #      key2 => 'd',
+    #   }
+    # }
+    #
+    # $merged = {
+    #   app => {
+    #       key1 => 'c',
+    #       key2 => 'd',
+    #       key3 => 'b',
+    #   }
+    # }
+
+    my $config = {};
+    for my $layer (@layers) {
+        for my $name (keys %$layer) {
+            for my $key (%{ $layer->{ $name } }) {
+                my $value = $layer->{ $name }{ $key };
+                if (ref($value) eq 'HASH') {
+                    $config->{ $name }{ $key } = +{ %$value };
+                }
+                elsif (ref($value) eq 'ARRAY') {
+                    $config->{ $name }{ $key } = +{ @$value };
+                }
+                else {
+                    $config->{ $name }{ $key } = $value;
+                }
+            }
+        }
+    }
+
+    return $config;
+}
+
+sub dotfiles_config_raw {
+    my ($name, $env, $os) = @_;
+
+    $os  //= dotfiles_os();
     $env //= dotfiles_environment();
 
     my $config;
@@ -167,32 +218,26 @@ sub dotfiles_config_raw {
         die "unable to locate .dotfiles.yml or dotfiles.yml\n";
     }
 
-    my $shared = $config->[0]{environments}{'*'}    // {};
-    my $this   = $config->[0]{environments}{ $env } // {};
+    my $merged_config = _merge_configs(
+        $config->[0]{oses}{'*'}            // {},
+        $config->[0]{oses}{ $os }          // {},
+        $config->[0]{environments}{'*'}    // {},
+        $config->[0]{environments}{ $env } // {},
+    );
+
     if ($name) {
-        return +{
-            %{ $shared->{ $name } // {} },
-            %{ $this->{ $name }   // {} },
-        };
+        return $merged_config->{ $name };
     }
     else {
-        my $config = {};
-        for my $key (keys %{ $shared // {} }) {
-            $config->{ $key } = +{ %{ $shared->{ $key } // {} } };
-        }
-        for my $key (keys %{ $this // {} }) {
-            $config->{ $key } = +{
-                %{ $config->{ $key } // {} },
-                %{ $this->{ $key }   // {} },
-            };
-        }
-        return $config;
+        return $merged_config;
     }
 }
 
 sub dotfiles_config {
-    my ($name, $env) = @_;
-    return inject_secrets( dotfiles_config_raw($name, $env) );
+    my ($name, $env, $os) = @_;
+    return inject_secrets( dotfiles_config_raw($name, $env, $os) );
 }
+
+# vim: ts=4 sts=4 sw=4
 
 1;
