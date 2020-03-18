@@ -4,6 +4,12 @@ source ~/.offlineimap.sh
 
 docker rm -f offlineimap
 docker pull zostay/offlineimap
+
+USER_ARG="-u $UID"
+if [[ $(uname) == 'Darwin' ]]; then
+  USER_ARG=""
+fi
+
 docker run --name offlineimap                   \
   -d                                            \
   -v ~/.netrc:/opt/etc/netrc                    \
@@ -12,5 +18,5 @@ docker run --name offlineimap                   \
   --env EMAIL="$MYEMAIL"                        \
   --restart=always                              \
   --cpu-quota=5000                              \
-  -u $UID                                       \
+  $USER_ARG                                     \
   zostay/offlineimap
