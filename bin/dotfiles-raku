@@ -1,12 +1,12 @@
 #!/bin/zsh
 
 if [[ -n "$IN_DOTFILES_CONTAINER" ]]; then
-    /usr/bin/perl "$@"
+    /usr/local/bin/raku "$@"
 else
     docker run -it --rm \
         --mount "type=bind,src=/home/sterling,dst=/home/user" \
         --env IN_DOTFILES_CONTAINER=1 \
         --user $UID \
-        zostay/dotfiles-perl \
-        perl "$@"
+        zostay/dotfiles-raku \
+        raku "$@"
 fi
