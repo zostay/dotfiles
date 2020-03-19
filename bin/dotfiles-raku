@@ -4,7 +4,7 @@ if [[ -n "$IN_DOTFILES_CONTAINER" ]]; then
     /usr/local/bin/raku "$@"
 else
     docker run -it --rm \
-        --mount "type=bind,src=/home/sterling,dst=/home/user" \
+        --mount "type=bind,src=/home/sterling,dst=/home/sterling" \
         --env IN_DOTFILES_CONTAINER=1 \
         --user $UID \
         zostay/dotfiles-raku \

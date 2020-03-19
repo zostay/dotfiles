@@ -34,11 +34,11 @@ RUN zef install --/force-test \
     JSON::Fast \
     META6
 
-ENV HOME=/home/user
+ENV HOME=/home/sterling
 
-RUN mkdir -p /home/user
+RUN mkdir -p /home/sterling
 
-VOLUME /home/user
-WORKDIR /home/user
+VOLUME /home/sterling
+WORKDIR /home/sterling
 
 CMD ["raku"]

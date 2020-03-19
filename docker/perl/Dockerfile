@@ -18,10 +18,10 @@ RUN cpanm \
 RUN apt-get update --yes
 RUN apt-get install zsh --yes
 
-ENV HOME=/home/user
+ENV HOME=/home/sterling
 
-RUN mkdir -p /home/user
+RUN mkdir -p /home/sterling
 
-VOLUME /home/user
+VOLUME /home/sterling
 
-WORKDIR /home/user
+WORKDIR /home/sterling
