@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+if [[ -n "$IN_DOTFILES_CONTAINER" ]]; then
+    /usr/bin/perl "$@"
+else
+    docker run -it --rm \
+        --mount "type=bind,src=/home/sterling,dst=/home/sterling" \
+        --env IN_DOTFILES_CONTAINER=1 \
+        --user $UID \
+        zostay/dotfiles-perl \
+        perl "$@"
+fi
