@@ -1,0 +1,12 @@
+#/bin/zsh
+
+HOST="$1"
+
+if [[ -z "$HOST" ]]; then
+  echo usage: $0 "<host>"
+  exit 1
+fi
+
+infocmp xterm-kitty | ssh "$HOST" tic -x -o \~/.terminfo -
+
+# vim: ft=zsh
