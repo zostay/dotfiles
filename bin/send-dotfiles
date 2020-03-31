@@ -1,0 +1,15 @@
+#!/bin/zsh
+
+# Sometimes I need to get my dotfiles somewhere that doesn't have access to
+# github. This assumes I've run ./install.sh locally. So here we go:
+
+REMOTE_HOST="$1"
+
+if [[ ! "$REMOTE_HOST" == *":"* ]]; then
+    REMOTE_HOST="$REMOTE_HOST:dotfiles/"
+fi
+
+DOTFILES_BIN_LOCATION=$(readlink $HOME/bin)
+DOTFILES_LOCATION=$(dirname "$DOTFILES_BIN_LOCATION")
+
+rsync -av --exclude=.git "$DOTFILES_LOCATION/" "$REMOTE_HOST"
