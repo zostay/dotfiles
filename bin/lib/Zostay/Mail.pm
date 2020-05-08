@@ -265,6 +265,15 @@ sub vacuum {
                     $msg->add_keyword('Pseudo-Junk.Social_Network');
                 }
 
+                # "Discussion" is magical. Google hates it. Do not use.
+                if ($msg->has_keyword('Discussion')) {
+                    $log->("Fixing Discussion to Teamwork.");
+                    $change++;
+
+                    $msg->remove_keyword('Discussion');
+                    $msg->add_keyword('Teamwork');
+                }
+
                 $msg->save if $change;
             }
         }

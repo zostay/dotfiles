@@ -81,7 +81,7 @@ ziprecruiter:
     days: 30
     label: \Trash
 
-  - folder: Discussion
+  - folder: Teamwork
     days: 1
     clear: \Inbox
 
@@ -108,3 +108,11 @@ ziprecruiter:
   - folder: Security
     days: 3
     clear: \Inbox
+
+  - folder: News
+    days: 3
+    clear: \Inbox
+
+  - folder: News
+    days: 90
+    move: \Trash
