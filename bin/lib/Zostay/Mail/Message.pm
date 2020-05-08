@@ -282,7 +282,7 @@ sub apply_rule {
             return (1, 'no exact subject test') unless defined $c->{subject};
             $$tests++;
             my $subject = $self->mime->header_str('Subject');
-            return (0, 'message Subject does not exactly match subject test') unless $c->{isubject} eq $subject;
+            return (0, 'message Subject does not exactly match subject test') unless $c->{subject} eq $subject;
             return (1, 'message Subject exactly matches subject test');
         },
 
