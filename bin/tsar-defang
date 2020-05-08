@@ -5,11 +5,23 @@ use JSON::Fast;
 
 my %SUB-MAIN-OPTS = :named-anywhere;
 
+my $STANDARD-FIELDS := set <
+  @tag
+  @timestamp
+  message
+  pid
+  priority
+  script_exec_id
+  script_exec_nth
+  source_host
+>;
+
 sub MAIN(
-  Str $filename = "-",             #= The file to defang (default=-)
-  Bool :c($add-category)  = False, #= Add categoy to output (default=False)
-  Bool :t($add-timestamp) = False, #= Add timestamp to output (default=False)
-  Bool :p($add-priority)  = True,  #= Add priority to output (default=True)
+  Str $filename                 = "-",   #= The file to defang (default=-)
+  Bool :c($add-category)        = False, #= Add categoy to output (default=False)
+  Bool :t($add-timestamp)       = True,  #= Add timestamp to output (default=True)
+  Bool :p($add-priority)        = True,  #= Add priority to output (default=True)
+  Bool :n($add-non-standard)    = True,  #= Add non-standard fields (default=Treu)
 ) {
   my $in;
   if $filename eq '-' {
@@ -20,14 +32,34 @@ sub MAIN(
   }
 
   for $in.lines -> $line {
-    my $data = from-json($line);
+    try {
+      my %data := from-json($line);
 
-    my @items;
-    push @items, $data<timestamp_hires> // '-' if $add-timestamp;
-    push @items, $data<priority> // 'NONE'     if $add-priority;
-    push @items, $data<category> // '-'        if $add-category;
-    push @items, $data<message>  // '-';
+      my @items;
+      push @items, %data<@timestamp> // '-'        if $add-timestamp;
+      push @items, %data<priority>   // 'ERROR'    if $add-priority;
+      push @items, %data<category>   // '-'        if $add-category;
+      push @items, %data<message>    // '-';
 
-    say @items.join(' ');
+      if $add-non-standard {
+        my @ns;
+        for %data.kv -> $k, $v {
+          next if $k ∈ $STANDARD-FIELDS;
+          push @ns, "$k=$v";
+        }
+
+        if @ns {
+          push @items, '{', @ns.join(', '), '}';
+        }
+      }
+
+      say @items.join(' ');
+
+      CATCH {
+        default {
+          note $line;
+        }
+      }
+    }
   }
 }
