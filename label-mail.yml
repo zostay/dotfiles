@@ -104,3 +104,7 @@ ziprecruiter:
   - folder: Schedule
     days: 7
     clear: \Inbox
+
+  - folder: Security
+    days: 3
+    clear: \Inbox
