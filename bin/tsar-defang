@@ -16,36 +16,92 @@ my $STANDARD-FIELDS := set <
   source_host
 >;
 
+my module ANSI {
+  BEGIN {
+    our %codes is export = 
+      RESET          => "\e[0m",
+      OLIVE          => "\e[33m",
+      CYAN           => "\e[36m",
+      BRIGHT-GREEN   => "\e[92m",
+      BRIGHT-BLUE    => "\e[94m",
+      BRIGHT-RED     => "\e[91m",
+      BRIGHT-MAGENTA => "\e[95m",
+      BRIGHT-YELLOW  => "\e[93m",
+      ;
+
+    for %codes.keys -> $k {
+      my $x = sub ($x?) { %codes{$k} ~ ($x//'') } but role { method name { $k } }
+      trait_mod:<is>(:export, $x);
+    }
+
+    our sub PRI($x?) is export {
+      given $x//'' {
+        when 'INFO' { %codes<BRIGHT-GREEN> ~ $_ }
+        when 'WARN' { %codes<BRIGHT-YELLOW> ~ $_ }
+        default     { %codes<BRIGHT-RED> ~ $_ }
+      }
+    }
+  }
+}
+
+import ANSI;
+
 sub MAIN(
-  Str $filename                 = "-",   #= The file to defang (default=-)
+  *@cmd,
   Bool :c($add-category)        = False, #= Add categoy to output (default=False)
   Bool :t($add-timestamp)       = True,  #= Add timestamp to output (default=True)
   Bool :p($add-priority)        = True,  #= Add priority to output (default=True)
-  Bool :n($add-non-standard)    = True,  #= Add non-standard fields (default=Treu)
+  Bool :n($add-non-standard)    = True,  #= Add non-standard fields (default=True)
+  Bool :C($color)               = True,  #= Add color to the output (defualt=True)
 ) {
-  my $in;
-  if $filename eq '-' {
-    $in = $*IN;
-  }
-  else {
-    $in = $filename.IO.open(:r);
+  if !$color {
+    $_ = '' for %ANSI::codes.values;
   }
 
-  for $in.lines -> $line {
+  my Supply $in;
+
+  if @cmd > 0 {
+    my $p = Proc::Async.new: @cmd;
+    $in = supply {
+      whenever $p.stdout.lines { emit $_ }
+      whenever $p.stderr.lines { emit $_ }
+      whenever $p.start { done }
+    }
+  }
+  elsif @cmd == 1 {
+    my $filename = @cmd[0];
+
+    if $filename eq '-' {
+      $in = $*IN.Supply.lines;
+    }
+    else {
+      $in = $filename.IO.lines.Supply;
+    }
+  }
+  else {
+    note "The command-line must either be a filename, - (to defang stdin), or -- followed by a command to run plus whatever options you want to use.";
+    exit 1;
+  }
+
+  react whenever $in -> $line {
     try {
       my %data := from-json($line);
 
+      without %data<@timestamp> | %data<priority> | %data<category> | %data<message> {
+        die "doesn't look like a log line to me, some other JSON then";
+      }
+
       my @items;
-      push @items, %data<@timestamp> // '-'        if $add-timestamp;
-      push @items, %data<priority>   // 'ERROR'    if $add-priority;
-      push @items, %data<category>   // '-'        if $add-category;
-      push @items, %data<message>    // '-';
+      push @items, OLIVE(%data<@timestamp> // '-')      if $add-timestamp;
+      push @items, PRI(%data<priority>      // 'ERROR') if $add-priority;
+      push @items, RESET(%data<category>   // '-')      if $add-category;
+      push @items, RESET(%data<message>    // '-');
 
       if $add-non-standard {
         my @ns;
         for %data.kv -> $k, $v {
           next if $k ∈ $STANDARD-FIELDS;
-          push @ns, "$k=$v";
+          push @ns, CYAN($k) ~ RESET("=") ~ BRIGHT-MAGENTA("$v") ~ RESET("");
         }
 
         if @ns {
