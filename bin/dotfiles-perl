@@ -10,7 +10,7 @@ else
       EXTRA_BIND="--mount=type=bind,src=$HOME,dst=$HOME"
     fi
 
-    docker run -it --rm \
+    docker run -it \
         $EXTRA_BIND \
         --mount "type=bind,src=$HOME,dst=/home/sterling" \
         --env IN_DOTFILES_CONTAINER=1 \
