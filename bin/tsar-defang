@@ -16,35 +16,56 @@ my $STANDARD-FIELDS := set <
   source_host
 >;
 
-my module ANSI {
+my module Term::ModernColor {
   BEGIN {
-    our %codes is export = 
-      RESET          => "\e[0m",
-      OLIVE          => "\e[33m",
-      CYAN           => "\e[36m",
-      BRIGHT-GREEN   => "\e[92m",
-      BRIGHT-BLUE    => "\e[94m",
-      BRIGHT-RED     => "\e[91m",
-      BRIGHT-MAGENTA => "\e[95m",
-      BRIGHT-YELLOW  => "\e[93m",
+    our %named-colors is export =
+      black  => 0, gray    => 8,
+      maroon => 1, red     => 9,
+      green  => 2, lime    => 10,
+      olive  => 3, yellow  => 11,
+      navy   => 4, blue    => 12,
+      purple => 5, fuschia => 13,
+      teal   => 6, aqua    => 14,
+      silver => 7, white   => 15,
       ;
 
-    for %codes.keys -> $k {
-      my $x = sub ($x?) { %codes{$k} ~ ($x//'') } but role { method name { $k } }
-      trait_mod:<is>(:export, $x);
+    our proto fgcolor(|) is export(:codes) { * }
+    multi fgcolor(Str:D $color-name --> Str:D) {
+      return "" with $*DISABLE-COLOR;
+      sprintf "\e[38;5;%03dm", %named-colors{ $color-name };
     }
 
-    our sub PRI($x?) is export {
-      given $x//'' {
-        when 'INFO' { %codes<BRIGHT-GREEN> ~ $_ }
-        when 'WARN' { %codes<BRIGHT-YELLOW> ~ $_ }
-        default     { %codes<BRIGHT-RED> ~ $_ }
-      }
+    our proto bgcolor(|) is export(:codes) { * }
+    multi bgcolor(Str:D $color-name --> Str:D) {
+      return "" with $*DISABLE-COLOR;
+      sprintf "\e[48;5;%03dm", %named-colors{ $color-name };
     }
+
+    for %named-colors.keys -> $color {
+      my $pfg = sub ($x?) { fgcolor($color) ~ ($x//'') } but role { method name { $color } }
+      trait_mod:<is>(:export(:named, :plain, :plainnamed), $pfg);
+
+      my $fg = sub ($x?) { fgcolor($color) ~ ($x//'') } but role { method name { "fg$color" } }
+      trait_mod:<is>(:export(:named, :fg, :fgnamed), $fg);
+
+      my $bg = sub ($x?) { bgcolor($color) ~ ($x//'') } but role { method name { "bg$color" } }
+      trait_mod:<is>(:export(:named, :bg, :bgnamed), $bg);
+    }
+
+    our sub reset-color(--> Str:D) is export(:codes) { "\e[0m" }
+    our sub done-coloring(--> Str:D) is export(:done) { reset-color() }
   }
 }
 
-import ANSI;
+import Term::ModernColor :named, :done;
+
+sub PRI($x?) {
+  given $x//'' {
+    when 'INFO' { fglime $_ }
+    when 'WARN' { fgyellow $_ }
+    default     { fgred $_ }
+  }
+}
 
 sub MAIN(
   *@cmd,
@@ -92,16 +113,16 @@ sub MAIN(
       }
 
       my @items;
-      push @items, OLIVE(%data<@timestamp> // '-')      if $add-timestamp;
-      push @items, PRI(%data<priority>      // 'ERROR') if $add-priority;
-      push @items, RESET(%data<category>   // '-')      if $add-category;
-      push @items, RESET(%data<message>    // '-');
+      push @items, fgyellow(%data<@timestamp> // '-')      if $add-timestamp;
+      push @items, PRI(%data<priority>        // 'ERROR') if $add-priority;
+      push @items, fgsilver(%data<category>   // '-')      if $add-category;
+      push @items, fgsilver(%data<message>    // '-');
 
       if $add-non-standard {
         my @ns;
         for %data.kv -> $k, $v {
           next if $k ∈ $STANDARD-FIELDS;
-          push @ns, CYAN($k) ~ RESET("=") ~ BRIGHT-MAGENTA("$v") ~ RESET("");
+          push @ns, fgaqua($k) ~ fgsilver("=") ~ fgfuschia("$v") ~ done-coloring;
         }
 
         if @ns {
@@ -113,9 +134,45 @@ sub MAIN(
 
       CATCH {
         default {
-          note $line;
+          # dd $_;
+          note colorize-regular($line);
         }
       }
     }
   }
+
+  print done-coloring;
+}
+
+sub colorize-regular(Str:D $_ --> Str:D) {
+  when /^ (' ---> ')( <[a..f 0..9]>+ ) / {
+    fgsilver($0) ~ fgfuschia($1) ~ done-coloring
+  }
+
+   when m{^ ('Step ')(\d+)('/')(\d+)(' : ')(\S+)(.*)} {
+     fgblue($0) ~ fgaqua($1) ~ fgblue($2) ~ fgteal($3) ~ fgblue($4) ~ fgyellow($5) ~ fgsilver($6) ~ done-coloring
+   }
+
+   when m{^ invalid .*} { fgred($_) }
+
+   when m{^ (\d ** 4 '-' \d ** 2 '-' \d ** 2 ' ' \d ** 2 ':' \d ** 2 ':' \d ** 2 ' ')('[info]')(.*)} {
+     fgyellow($0) ~ fglime($1) ~ fgsilver($2) ~ done-coloring;
+   }
+
+   when m{^ (\d ** 4 '-' \d ** 2 '-' \d ** 2 ' ' \d ** 2 ':' \d ** 2 ':' \d ** 2 ' ')('[warn]')(.*)} {
+     fgyellow($0) ~ fgyellow($1) ~ fgsilver($2) ~ done-coloring;
+   }
+
+   when m{^ (\d ** 4 '-' \d ** 2 '-' \d ** 2 ' ' \d ** 2 ':' \d ** 2 ':' \d ** 2 ' ')('[error]')(.*)} {
+     fgyellow($0) ~ fgred($1) ~ fgsilver($2) ~ done-coloring;
+   }
+
+   when m{^ (\d ** 4 '-' \d ** 2 '-' \d ** 2 'T' \d ** 2 ':' \d ** 2 ':' \d ** 2 '.' \d ** 6 'Z ')('0 ')('[Note]')(.*)} {
+     fgyellow($0) ~ fgsilver($1) ~ fglime($2) ~ fgsilver($3) ~ done-coloring;
+   }
+
+   when m{^ (\d ** 4 '-' \d ** 2 '-' \d ** 2 'T' \d ** 2 ':' \d ** 2 ':' \d ** 2 '.' \d ** 6 'Z ')('0 ')('[Warning]')(.*)} {
+     fgyellow($0) ~ fgsilver($1) ~ fgyellow($2) ~ fgsilver($3) ~ done-coloring;
+   }
+   default { $_ }
 }
