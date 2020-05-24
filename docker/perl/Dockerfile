@@ -25,3 +25,7 @@ RUN mkdir -p /home/sterling
 VOLUME /home/sterling
 
 WORKDIR /home/sterling
+
+COPY entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

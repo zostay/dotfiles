@@ -8,7 +8,7 @@ ARG RAKU_VERSION=2020.02.1
 WORKDIR /usr/local/src
 
 RUN apt-get update
-RUN apt-get install -y curl gnupg2 git build-essential zsh libssl-dev
+RUN apt-get install -y curl gnupg2 git build-essential zsh libssl-dev tmux xterm
 
 RUN git clone \
     --single-branch --branch $RAKU_VERSION \
