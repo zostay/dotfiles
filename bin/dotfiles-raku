@@ -3,8 +3,11 @@
 if [[ -n "$IN_DOTFILES_CONTAINER" ]]; then
     /usr/local/bin/raku "$@"
 else
+    TMUX_MOUNT="$TMUX_TMP"
     docker run -it --rm \
         --mount "type=bind,src=/home/sterling,dst=/home/sterling" \
+        --mount "type=bind,src=$TMUX_MOUNT,dst=$TMUX_MOUNT" \
+        --env-file <(env | grep '^\(TMUX\|ZOSTAY\|XDG\|LC\|PROMPT\|SAFEPLAC\)') \
         --env IN_DOTFILES_CONTAINER=1 \
         --user $UID \
         zostay/dotfiles-raku \
