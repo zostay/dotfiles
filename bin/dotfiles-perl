@@ -14,6 +14,7 @@ else
         $EXTRA_BIND \
         --mount "type=bind,src=$HOME,dst=/home/sterling" \
         --env IN_DOTFILES_CONTAINER=1 \
+        --privileged \
         $USER_ARG \
         zostay/dotfiles-perl \
         perl "$@"

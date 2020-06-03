@@ -7,8 +7,10 @@ else
     docker run -it --rm \
         --mount "type=bind,src=/home/sterling,dst=/home/sterling" \
         --mount "type=bind,src=$TMUX_MOUNT,dst=$TMUX_MOUNT" \
-        --env-file <(env | grep '^\(TMUX\|ZOSTAY\|XDG\|LC\|PROMPT\|SAFEPLAC\)') \
+        --mount "type=bind,src=/usr/bin,dst=/usr/bin" \
+        --env-file <(env | grep '^\(TMUX\|ZOSTAY\|XDG\|LC\|PROMPT\|SAFEPLACE\)') \
         --env IN_DOTFILES_CONTAINER=1 \
+        --privileged \
         --user $UID \
         zostay/dotfiles-raku \
         raku "$@"
