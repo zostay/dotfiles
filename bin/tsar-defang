@@ -3,7 +3,7 @@
 use v6;
 use JSON::Fast;
 
-my %SUB-MAIN-OPTS = :named-anywhere;
+my %*SUB-MAIN-OPTS = :named-anywhere;
 
 my $STANDARD-FIELDS := set <
   @tag

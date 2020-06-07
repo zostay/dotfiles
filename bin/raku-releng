@@ -87,7 +87,7 @@ class Releng {
                 if $file.d {
                     push @open, $file.dir;
                 }
-                elsif $file.f && $file ~~ / ".pm6" $/ {
+                elsif $file.f && $file.extension eq 'pm6' | 'rakumod' {
                     take $file;
                 }
             }
