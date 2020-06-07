@@ -51,7 +51,7 @@ fi
 
 NAME="${NAME//\./-}"
 
-if tmux display-message -p '#S' | grep "^$NAME$" >/dev/null; then
+if [[ -n "$TMUX" ]] && tmux display-message -p '#S' | grep "^$NAME$" >/dev/null; then
     echo "This is the [$NAME] session!";
 else
     if ! tmux has-session -t "$NAME" &>/dev/null; then
