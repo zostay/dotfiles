@@ -1,0 +1,204 @@
+#!/usr/bin/env raku
+use v6;
+
+my %*SUB-MAIN-OPTS = :named-anywhere;
+
+multi MAIN('on',
+    Str $name? is copy,
+    Str $path? is copy,
+) {
+    my $shorten = False;
+
+    with $name {
+        $shorten++;
+    }
+    else {
+        $name = 'stuff';
+    }
+
+    my $dir = $path;
+    $dir //= ($name ne 'stuff') ?? $name !! "$*HOME";
+    $dir .= IO;
+
+    if $shorten {
+        # work on 0/dotfiles => dotfiles
+        $name = $name.IO.basename;
+    }
+
+    if !"$dir".starts-with('/') {
+        if $*HOME.add("projects/$dir").d {
+            $dir = $*HOME.add("projects/$dir");
+        }
+        else {
+            $dir = $*HOME;
+        }
+    }
+
+    $name ~~ s:g/ '.' /-/;
+
+    if %*ENV<TMUX> && tmux('display-message', :print, '#S') eq $name {
+        say "This is the [$name] session!";
+    }
+    else {
+        if !tmux('has-session', :target-session($name)) {
+            tmux 'new-session', :detached, :cd($dir), :session-name($name);
+            initialize-session $name, $dir;
+        }
+
+        if %*ENV<TMUX> {
+            tmux 'switch-client', :target-session($name);
+        }
+        else {
+            tmux 'attach-session', :target-session($name);
+        }
+    }
+}
+
+multi MAIN('list', Bool :$o) {
+    if $o {
+        quietly tmux('list-sessions').lines.grep(/'(attached)'/).map({
+            .split(/\s+/)[0].subst(/':'$/, '')
+        }).join("\n").say;
+    }
+    else {
+        quietly tmux('list-sessions').lines.map({
+            .split(/\s+/)[9,0].join(' ').subst(/':'$/, '').subst('(attached)', '*').subst(/^' '/, '  ')
+        }).join("\n").say;
+    }
+}
+
+sub _run(*@cmd-line, |c) {
+    #note @cmd-line.map({ /\s/ ?? qq["$_"] !! $_ }).join(' ');
+    run |@cmd-line, |c;
+}
+
+multi tmux('select-window', :$target-window! --> Bool:D) {
+    ?_run qqww< tmux select-window -t "$target-window" >;
+}
+
+multi tmux('list-sessions' --> IO::Handle:D) {
+    my $p = _run qqww< tmux list-sessions >, :out;
+    $p.out;
+}
+
+multi tmux('display-message', $message, :$print --> Str:D) {
+    my $p = _run 'tmux', 'display-message',
+        (do if $print { '-p' }),
+        $message,
+        :out,
+        ;
+    $p.out.slurp;
+}
+
+multi tmux('has-session', Str:D :$target-session! --> Bool:D) {
+    ?_run qqww< tmux has-session -t $target-session >, :out, :err;
+}
+
+multi tmux('new-window', *@cmd-line, Str :$name, IO::Path :$cd, Str :$target-session) {
+    ?_run 'tmux', 'new-window',
+        (do with $name { '-n', $name }),
+        (do with $cd { '-c', $cd }),
+        (do with $target-session { '-t', $target-session }),
+        @cmd-line,
+        ;
+}
+
+multi tmux('new-session',
+    Bool :$detached = False,
+    IO::Path :$cd,
+    Str :$session-name,
+    --> Bool:D
+) {
+    ?_run 'tmux', 'new-session',
+        (do with $detached { '-d' }),
+        (do with $cd { '-c', $cd }),
+        (do with $session-name { '-s', $session-name }),
+        ;
+}
+
+multi tmux('switch-client',
+    Str:D :$target-session!,
+    --> Bool:D
+) {
+    ?_run qqww< tmux switch-client -t $target-session >;
+}
+
+multi tmux('attach-session',
+    Str:D :$target-session!,
+    --> Bool:D
+) {
+    ?_run qqww< tmux attach-session -t $target-session >;
+}
+
+sub vim-session(
+    Str $session-name,
+    IO::Path $session-dir,
+    --> IO::Path
+) {
+    my IO::Path $vim-session;
+    if $session-dir eq $*HOME {
+        if $session-name {
+            $*HOME.mkdir;
+            $vim-session = $*HOME.add(".vim/sessions/$session-name.vim");
+        }
+    }
+    else {
+        $vim-session = $session-dir.add('.session.vim');
+    }
+
+    if $vim-session && !$vim-session.e {
+        $vim-session.spurt('');
+    }
+
+    $vim-session;
+}
+
+sub add-editor(
+    Str $session-name,
+    IO::Path $session-dir is copy,
+    --> Bool:D
+) {
+    if !$session-dir {
+        $session-dir = $*CWD;
+    }
+
+    my $vim-session = vim-session($session-name, $session-dir);
+
+    if $session-dir && $vim-session {
+        tmux 'new-window', :name<edit>, :cd($session-dir), :target-session("$session-name:"),
+            qq[$*HOME/bin/resize-window-fix; 'VIM_SESSION=$vim-session' vim -S $vim-session];
+    }
+    elsif $vim-session {
+        tmux 'new-window', :name<edit>,
+            qq[$*HOME/bin/resize-window-fix; 'VIM_SESSION=$vim-session' vim -S $vim-session];
+    }
+    else {
+        tmux 'new-window', :name<edit>, "$*HOME/bin/resize-window-fix; vim";
+    }
+
+    #?run qqww< add-editor $session-name $session-dir >;
+}
+
+sub add-repl(
+    Str $session-name,
+    IO::Path $session-dir
+    --> Bool:D
+) {
+    ?run qqww< add-repl $session-name $session-dir >;
+}
+
+sub initialize-session(Str:D $session-name, IO::Path:D $session-dir) {
+    my $short-dir = $session-dir.parent.basename;
+
+    add-editor $session-name, $session-dir;
+
+    given $short-dir {
+        when 'raku' {
+            add-repl $session-name, $session-dir;
+        }
+    }
+
+    tmux('select-window', :target-window("$session-name:0"));
+}
+
+# vim: ft=raku
