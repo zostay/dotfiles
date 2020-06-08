@@ -39,10 +39,29 @@ nametrans = lambda foldername: re.sub ('^\[Gmail\]', 'gmail',
                                      )
                                   )
                                )
-# Necessary as of OfflineIMAP 6.5.4
+
+# XOAUTH2 handling
 sslcacertfile = /etc/ssl/certs/ca-certificates.crt
+ssl = yes
+starttls = no
+
+[% if ($auth_type eq 'oauth2') { 
+       $OUT .= <<"END_OF_OAUTH2_CONFIG";
+auth_mechanisms = XOAUTH2
+oauth2_client_id = $oauth2_client_id
+oauth2_client_secret = $oauth2_client_secret
+oauth2_refresh_token = $oauth2_refresh_token
+oauth2_request_url = https://accounts.google.com/o/oauth2/token
+END_OF_OAUTH2_CONFIG
+   }
+   elsif ($auth_type eq 'netrc') {
+       $OUT .= <<"END_OF_PASSWORD_CONFIG";
+auth_mechanisms = GSSAPI, CRAM-MD5, PLAIN, LOGIN
+END_OF_PASSWORD_CONFIG
+   }
+   %]
+
 # turns out you can use 100% of gmails features through IMAP. SWEET!
 # http://support.google.com/mail/bin/answer.py?hl=en&topic=12815&answer=77657
 realdelete = no
-auth_mechanisms = GSSAPI, CRAM-MD5, PLAIN, LOGIN
 # vim: ft=dosini

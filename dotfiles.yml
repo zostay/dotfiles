@@ -35,6 +35,7 @@ environments:
     offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_HOME
+      auth_type: netrc
     signature:
       line1: https://sterling.hanenkamp.com/stfl/
     vimrc:
@@ -55,6 +56,13 @@ environments:
     offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
+      auth_type: oauth2
+      oauth2_client_id:
+        __SECRET__: IMAP_OAUTH2_CLIENT_ID
+      oauth2_client_secret:
+        __SECRET__: IMAP_OAUTH2_CLIENT_SECRET
+      oauth2_refresh_token:
+        __SECRET__: IMAP_OAUTH2_REFRESH_TOKEN
     signature:
       line1: ZipRecruiter (https://www.ziprecruiter.com)
       line2: Software Engineer

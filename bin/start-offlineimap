@@ -15,6 +15,7 @@ docker run --name offlineimap                   \
   -v ~/.netrc:/opt/etc/netrc                    \
   -v ~/Mail:/opt/var/mail                       \
   -v ~/.offlineimap/index:/opt/var/index        \
+  -v ~/.offlineimaprc:/home/user/.offlineimaprc \
   --env EMAIL="$MYEMAIL"                        \
   --restart=always                              \
   --cpu-quota=5000                              \
