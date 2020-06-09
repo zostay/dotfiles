@@ -184,7 +184,11 @@ sub add-repl(
     IO::Path $session-dir
     --> Bool:D
 ) {
-    ?run qqww< add-repl $session-name $session-dir >;
+    if $session-dir {
+        tmux 'new-window', :name<repl>, :cd($session-dir), :target-session("$session-name:"), "raku";
+    } else {
+        tmux 'new-window', :name<repl>, "raku";
+    }
 }
 
 sub initialize-session(Str:D $session-name, IO::Path:D $session-dir) {
