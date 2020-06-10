@@ -113,6 +113,25 @@ my class Session {
             qq[$*HOME/bin/resize-window-fix; VIM_SESSION='$.vim-session' vim -S $.vim-session],
             ;
     }
+
+    multi method add-window('repl' --> True) {
+        tmux 'new-window',
+            :name<repl>,
+            :cd($!path),
+            :target-session($.window-name),
+            "raku",
+            ;
+    }
+
+    method initialize-session(--> True) {
+        self.add-window('editor');
+
+        given $!path.parent.basename {
+            when 'raku' {
+                self.add-window('repl');
+            }
+        }
+    }
 }
 
 multi MAIN('add', $what,
@@ -148,8 +167,9 @@ sub current-session-name(--> Str) {
     return Nil unless %*ENV<TMUX>;
     tmux 'display-message', :print, '#S';
 }
+
 sub _run(*@cmd-line, |c) {
-    note @cmd-line.map({ /\s/ ?? qq["$_"] !! $_ }).join(' ');
+    #note @cmd-line.map({ /\s/ ?? qq["$_"] !! $_ }).join(' ');
     run |@cmd-line, |c;
 }
 
@@ -209,32 +229,6 @@ multi tmux('attach-session',
     --> Bool:D
 ) {
     ?_run qqww< tmux attach-session -t $target-session >;
-}
-
-sub add-repl(
-    Str $session-name,
-    IO::Path $session-dir
-    --> Bool:D
-) {
-    if $session-dir {
-        tmux 'new-window', :name<repl>, :cd($session-dir), :target-session("$session-name:"), "raku";
-    } else {
-        tmux 'new-window', :name<repl>, "raku";
-    }
-}
-
-sub initialize-session(Str:D $session-name, IO::Path:D $session-dir) {
-    my $short-dir = $session-dir.parent.basename;
-
-    #add-editor $session-name, $session-dir;
-
-    given $short-dir {
-        when 'raku' {
-            add-repl $session-name, $session-dir;
-        }
-    }
-
-    tmux('select-window', :target-window("$session-name:0"));
 }
 
 # vim: ft=raku
