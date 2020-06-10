@@ -3,55 +3,132 @@ use v6;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
+my class Session {
+    has Str $.name;
+    has IO::Path $.path;
+
+    has Bool $.is-name-explicitly-set;
+    has Bool $.existing-session;
+
+    submethod BUILD(:$!name, :$path) {
+        $!is-name-explicitly-set = False;
+        $!existing-session       = False;
+
+        $!is-name-explicitly-set++ with $!name;
+
+        if current-session-name() -> $this-session {
+            $!existing-session++;
+            $!name //= $this-session;
+        }
+
+        $!name //= 'stuff' without $!name;
+
+        $!name ~~ tr/./-/;
+
+        $!path = do with $path {
+            when IO::Path { $path }
+            default       { $path.IO }
+        }
+        elsif $!existing-session { $*CWD }
+        else { $*HOME }
+
+        unless "$!path".starts-with('/') {
+            if $*HOME.add("projects/$!path").d {
+                $!path = $*HOME.add("projeects/$!path");
+            }
+            else {
+                # TODO Maybe this should just die
+                $!path = $!existing-session ?? $*CWD !! $*HOME;
+            }
+        }
+    }
+
+    has IO::Path $!vim-session;
+    method vim-session(--> IO::Path:D) {
+        $!vim-session //= self!build-vim-session;
+    }
+
+    method short-name(--> Str:D) {
+        if $!is-name-explicitly-set {
+            $!name.IO.basename;
+        }
+        else {
+            $!name;
+        }
+    }
+
+    method window-name(--> Str:D) { "$.short-name:" }
+
+    method !build-vim-session {
+        my $vim-session;
+
+        if $!path eq $*HOME {
+            $vim-session = $*HOME.add(".vim/sessions/$!name.vim");
+            $vim-session.parent.mkdir;
+        }
+        else {
+            $vim-session = $!path.add('.session.vim');
+        }
+
+        if !$vim-session.e && $vim-session.parent.d {
+            $vim-session.spurt('');
+        }
+
+        $vim-session;
+    }
+
+    method go-go-go(--> True) {
+        if current-session-name() eq $!name {
+             say "This is the [$!name] session!";
+        }
+        else {
+            if !tmux('has-session', :target-session($!name)) {
+                tmux 'new-session',
+                    :detached,
+                    :cd($!path),
+                    :session-name($!name),
+                    ;
+                self.initialize-session;
+            }
+
+            if %*ENV<TMUX> {
+                tmux 'switch-client',
+                    :target-session($!name),
+                    ;
+            }
+
+            else {
+                tmux 'attach-session',
+                    :target-session($!name),
+                    ;
+            }
+        }
+    }
+
+    multi method add-window('editor' --> True) {
+        tmux 'new-window',
+            :name<edit>,
+            :cd($.path),
+            :target-session($.window-name),
+            qq[$*HOME/bin/resize-window-fix; VIM_SESSION='$.vim-session' vim -S $.vim-session],
+            ;
+    }
+}
+
+multi MAIN('add', $what,
+    Str $name? is copy,
+    Str $path? is copy,
+) {
+    my Session $session .= new(:$name, :$path);
+    $session.add-window($what);
+}
+
 multi MAIN('on',
     Str $name? is copy,
     Str $path? is copy,
 ) {
-    my $shorten = False;
-
-    with $name {
-        $shorten++;
-    }
-    else {
-        $name = 'stuff';
-    }
-
-    my $dir = $path;
-    $dir //= ($name ne 'stuff') ?? $name !! "$*HOME";
-    $dir .= IO;
-
-    if $shorten {
-        # work on 0/dotfiles => dotfiles
-        $name = $name.IO.basename;
-    }
-
-    if !"$dir".starts-with('/') {
-        if $*HOME.add("projects/$dir").d {
-            $dir = $*HOME.add("projects/$dir");
-        }
-        else {
-            $dir = $*HOME;
-        }
-    }
-
-    $name ~~ s:g/ '.' /-/;
-
-    if %*ENV<TMUX> && tmux('display-message', :print, '#S') eq $name {
-        say "This is the [$name] session!";
-    }
-    else {
-        if !tmux('has-session', :target-session($name)) {
-            tmux 'new-session', :detached, :cd($dir), :session-name($name);
-            initialize-session $name, $dir;
-        }
-
-        if %*ENV<TMUX> {
-            tmux 'switch-client', :target-session($name);
-        }
-        else {
-            tmux 'attach-session', :target-session($name);
-        }
-    }
+    my Session $session .= new(:$name, :$path);
+    $session.go-go-go;
 }
 
 multi MAIN('list', Bool :$o) {
@@ -67,8 +144,12 @@ multi MAIN('list', Bool :$o) {
     }
 }
 
+sub current-session-name(--> Str) {
+    return Nil unless %*ENV<TMUX>;
+    tmux 'display-message', :print, '#S';
+}
 sub _run(*@cmd-line, |c) {
-    #note @cmd-line.map({ /\s/ ?? qq["$_"] !! $_ }).join(' ');
+    note @cmd-line.map({ /\s/ ?? qq["$_"] !! $_ }).join(' ');
     run |@cmd-line, |c;
 }
 
@@ -87,7 +168,7 @@ multi tmux('display-message', $message, :$print --> Str:D) {
         $message,
         :out,
         ;
-    $p.out.slurp;
+    $p.out.slurp.chomp;
 }
 
 multi tmux('has-session', Str:D :$target-session! --> Bool:D) {
@@ -130,55 +211,6 @@ multi tmux('attach-session',
     ?_run qqww< tmux attach-session -t $target-session >;
 }
 
-sub vim-session(
-    Str $session-name,
-    IO::Path $session-dir,
-    --> IO::Path
-) {
-    my IO::Path $vim-session;
-    if $session-dir eq $*HOME {
-        if $session-name {
-            $*HOME.mkdir;
-            $vim-session = $*HOME.add(".vim/sessions/$session-name.vim");
-        }
-    }
-    else {
-        $vim-session = $session-dir.add('.session.vim');
-    }
-
-    if $vim-session && !$vim-session.e {
-        $vim-session.spurt('');
-    }
-
-    $vim-session;
-}
-
-sub add-editor(
-    Str $session-name,
-    IO::Path $session-dir is copy,
-    --> Bool:D
-) {
-    if !$session-dir {
-        $session-dir = $*CWD;
-    }
-
-    my $vim-session = vim-session($session-name, $session-dir);
-
-    if $session-dir && $vim-session {
-        tmux 'new-window', :name<edit>, :cd($session-dir), :target-session("$session-name:"),
-            qq[$*HOME/bin/resize-window-fix; 'VIM_SESSION=$vim-session' vim -S $vim-session];
-    }
-    elsif $vim-session {
-        tmux 'new-window', :name<edit>,
-            qq[$*HOME/bin/resize-window-fix; 'VIM_SESSION=$vim-session' vim -S $vim-session];
-    }
-    else {
-        tmux 'new-window', :name<edit>, "$*HOME/bin/resize-window-fix; vim";
-    }
-
-    #?run qqww< add-editor $session-name $session-dir >;
-}
-
 sub add-repl(
     Str $session-name,
     IO::Path $session-dir
@@ -194,7 +226,7 @@ sub add-repl(
 sub initialize-session(Str:D $session-name, IO::Path:D $session-dir) {
     my $short-dir = $session-dir.parent.basename;
 
-    add-editor $session-name, $session-dir;
+    #add-editor $session-name, $session-dir;
 
     given $short-dir {
         when 'raku' {
