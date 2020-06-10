@@ -1,4 +1,5 @@
 #!/usr/bin/env raku
+
 use v6;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
@@ -8,16 +9,17 @@ my class Session {
     has IO::Path $.path;
 
     has Bool $.is-name-explicitly-set;
-    has Bool $.existing-session;
+    has Bool $.is-existing-session;
+    has Bool $.is-path-explicitly-set;
 
     submethod BUILD(:$!name, :$path) {
         $!is-name-explicitly-set = False;
-        $!existing-session       = False;
+        $!is-existing-session    = False;
 
         $!is-name-explicitly-set++ with $!name;
 
         if current-session-name() -> $this-session {
-            $!existing-session++;
+            $!is-existing-session++;
             $!name //= $this-session;
         }
 
@@ -25,22 +27,23 @@ my class Session {
 
         $!name ~~ tr/./-/;
 
+        $!is-path-explicitly-set = False;
         $!path = do with $path {
+            $!is-path-explicitly-set++;
             when IO::Path { $path }
             default       { $path.IO }
         }
-        elsif $!existing-session { $*CWD }
+        elsif $!is-existing-session { $*CWD }
+        elsif $!is-name-explicitly-set {
+            if $*HOME.add("projects/$!name").d {
+                $!is-path-explicitly-set++;
+                $*HOME.add("projects/$!name");
+            }
+            else { $*HOME }
+        }
         else { $*HOME }
 
-        unless "$!path".starts-with('/') {
-            if $*HOME.add("projects/$!path").d {
-                $!path = $*HOME.add("projeects/$!path");
-            }
-            else {
-                # TODO Maybe this should just die
-                $!path = $!existing-session ?? $*CWD !! $*HOME;
-            }
-        }
+        $!name = $!name.IO.basename;
     }
 
     has IO::Path $!vim-session;
@@ -163,8 +166,8 @@ multi MAIN('list', Bool :$o) {
     }
 }
 
-sub current-session-name(--> Str) {
-    return Nil unless %*ENV<TMUX>;
+sub current-session-name(--> Str:D) {
+    return '' unless %*ENV<TMUX>;
     tmux 'display-message', :print, '#S';
 }
 
