@@ -104,6 +104,7 @@ autocmd FileType perl,raku,json,zsh,sh autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " Git
 autocmd BufNewFile,BufRead *.git/COMMIT_EDITMSG setf gitcommit
+
 autocmd BufNewFile,BufRead *.git/config,.gitconfig,.gitmodules setf gitconfig
 autocmd BufNewFile,BufRead git-rebase-todo      setf gitrebase
 autocmd BufNewFile,BufRead .msg.[0-9]*
@@ -181,7 +182,7 @@ autocmd FileType python
 autocmd BufEnter *.psgi
     \ set ft=perl
 
-autocmd BufEnter *.pm6,*.raku,*.p6,*.rakudoc,*.rakutest
+autocmd BufEnter *.pm6,*.raku,*.p6,*.rakudoc,*.rakutest,*.rakumod
     \ set ft=raku
 
 autocmd FileType tex,notes
