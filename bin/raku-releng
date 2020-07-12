@@ -17,6 +17,8 @@ class Releng {
     has Str $.changes;
     has Str $.meta6;
     has Str $.readme;
+    has Bool $.release;
+    has Bool $.travis;
 
     has Version $!version;
     has Str $!vless-string;
@@ -409,13 +411,13 @@ class Releng {
             self.updating-readme;
 
             self.push-release-branch;
-            self.await-travis-ci;
+            self.await-travis-ci if $!travis;
         }
 
         self.tag-and-push-release;
         self.merge-release-and-reset;
 
-        self.release;
+        self.release if $!release;
     }
 }
 
@@ -428,7 +430,9 @@ sub MAIN(
     Bool :$resume = False, #= Resume a previous release that stopped during the Travis-CI check
     Str :$changes = 'Changes', #= Name of the Changes file
     Str :$meta6 = 'META6.json', #= Name of the META file
-    Str :$readme = 'README.md' #= Name of the README.md file
+    Str :$readme = 'README.md', #= Name of the README.md file
+    Bool :$release = False, #= Release to CPAN.
+    Bool :$travis = True, #= Wait for successful travis-ci.org status before releasing.
 ) {
     my $tool = Releng.new(
         :$v-string,
@@ -438,6 +442,8 @@ sub MAIN(
         :$changes,
         :$meta6,
         :$readme,
+        :$release,
+        :$travis,
     );
 
     $tool.run;
