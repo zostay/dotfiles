@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+source "$HOME/bin/backup.env"
+
+sudo vgimport -a
+sudo lvchange -ay "$BACKUP_LV"
+sudo mount "$BACKUP_DIR"

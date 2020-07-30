@@ -1,0 +1,57 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use autodie;
+
+my $BACKUP_LV = "backup";
+my $BACKUP_DIR = "/var/cache/rsnapshot";
+my $BACKUP_CONF = "/etc/rsnapshot.conf";
+
+my %durations = (
+    yearly  => 365 * 24 * 60 * 60,
+    monthly => 30 * 24 * 60 * 60,
+    weekly  => 7 * 24 * 60 * 60,
+    daily   => 24 * 60 * 60,
+    hourly  => 60 * 60,
+);
+
+# Safely ready LVM and mount
+system(qw( mount-backup ));
+
+# Fix dir perms for backup directories
+opendir(my $dh, $BACKUP_DIR);
+while (readdir $dh) {
+    next unless /^ \w+ [.] \d+ $/x;
+    system(qw( sudo chmod a+rx ), "$BACKUP_DIR/$_");
+}
+closedir $dh;
+
+# Read the rsnapshot configuration
+my @retains = do {
+    open my $fh, '<', $BACKUP_CONF;
+    my @retain_lines = map { split /\s+/ } map s/^retain\s+//r, grep /^retain\b/, <$fh>;
+    close $fh;
+    reverse @retain_lines;
+};
+
+# Check the age of each backup and run the appropriate phases... longer phases
+# run first to get the older backup set saved
+my $now = time;
+while (my ($tcount, $this) = splice @retains, 0, 2) {
+    my $final_backup = "$BACKUP_DIR/$this.0";
+
+    print "$final_backup\n";
+
+    next unless -d $final_backup;
+
+    my $mtime = (stat $final_backup)[9];
+
+    if ($now - $mtime > $durations{ $this }) {
+        print "Starting $this ... \n";
+        system(qw( sudo rsnapshot ), $this);
+    }
+}
+
+# Safely unmount and ready LVM for unplug
+system(qw( umount-backup ));
