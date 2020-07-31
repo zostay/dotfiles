@@ -35,22 +35,40 @@ my @retains = do {
     reverse @retain_lines;
 };
 
+push @retains, 1,  $retains[-1];
+
 # Check the age of each backup and run the appropriate phases... longer phases
 # run first to get the older backup set saved
 my $now = time;
-while (my ($tcount, $this) = splice @retains, 0, 2) {
-    my $final_backup = "$BACKUP_DIR/$this.0";
+my ($tcount, $this);
+while (my ($pcount, $prev) = splice @retains, 0, 2) {
+    unless (defined $this) {
+        ($tcount, $this) = ($pcount, $prev);
+        next;
+    }
 
-    print "$final_backup\n";
+    my $prev_final = $pcount - 1;
 
-    next unless -d $final_backup;
+    my $previous_backup = "$BACKUP_DIR/$prev.$prev_final";
+    my $this_backup     = "$BACKUP_DIR/$this.0";
 
-    my $mtime = (stat $final_backup)[9];
+    next unless -d $previous_backup;
 
-    if ($now - $mtime > $durations{ $this }) {
+    my $prev_mtime = (stat $previous_backup)[9];
+    my $this_mtime = $this eq $prev  ? time
+                   : -d $this_backup ? (stat $this_backup)[9]
+                   :                   time
+                   ;
+
+    #print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
+
+    if ($this_mtime - $prev_mtime > $durations{ $this }) {
         print "Starting $this ... \n";
         system(qw( sudo rsnapshot ), $this);
     }
+
+} continue {
+    ($tcount, $this) = ($pcount, $prev);
 }
 
 # Safely unmount and ready LVM for unplug
