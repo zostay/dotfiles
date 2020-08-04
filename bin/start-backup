@@ -60,9 +60,11 @@ while (my ($pcount, $prev) = splice @retains, 0, 2) {
                    :                   time
                    ;
 
-    #print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
+    # print "PREV $prev time: ", scalar localtime($prev_mtime), "\n";
+    # print "THIS $this time: ", scalar localtime($this_mtime), "\n";
+    # print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
 
-    if ($this_mtime - $prev_mtime > $durations{ $this }) {
+    if (abs($this_mtime - $prev_mtime) > $durations{ $this }) {
         print "Starting $this ... \n";
         system(qw( sudo rsnapshot ), $this);
     }
