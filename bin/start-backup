@@ -40,37 +40,43 @@ push @retains, 1,  $retains[-1];
 # Check the age of each backup and run the appropriate phases... longer phases
 # run first to get the older backup set saved
 my $now = time;
-my ($tcount, $this);
-while (my ($pcount, $prev) = splice @retains, 0, 2) {
-    unless (defined $this) {
+while (1) {
+    my $worked = 0;
+    my ($tcount, $this);
+    while (my ($pcount, $prev) = splice @retains, 0, 2) {
+        unless (defined $this) {
+            ($tcount, $this) = ($pcount, $prev);
+            next;
+        }
+
+        my $prev_final = $pcount - 1;
+
+        my $previous_backup = "$BACKUP_DIR/$prev.$prev_final";
+        my $this_backup     = "$BACKUP_DIR/$this.0";
+
+        next unless -d $previous_backup;
+
+        my $prev_mtime = (stat $previous_backup)[9];
+        my $this_mtime = $this eq $prev  ? time
+                    : -d $this_backup ? (stat $this_backup)[9]
+                    :                   time
+                    ;
+
+        # print "PREV $prev time: ", scalar localtime($prev_mtime), "\n";
+        # print "THIS $this time: ", scalar localtime($this_mtime), "\n";
+        # print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
+
+        if (abs($this_mtime - $prev_mtime) > $durations{ $this }) {
+            print "Starting $this ... \n";
+            system(qw( sudo rsnapshot ), $this);
+            $worked++;
+        }
+
+    } continue {
         ($tcount, $this) = ($pcount, $prev);
-        next;
     }
 
-    my $prev_final = $pcount - 1;
-
-    my $previous_backup = "$BACKUP_DIR/$prev.$prev_final";
-    my $this_backup     = "$BACKUP_DIR/$this.0";
-
-    next unless -d $previous_backup;
-
-    my $prev_mtime = (stat $previous_backup)[9];
-    my $this_mtime = $this eq $prev  ? time
-                   : -d $this_backup ? (stat $this_backup)[9]
-                   :                   time
-                   ;
-
-    # print "PREV $prev time: ", scalar localtime($prev_mtime), "\n";
-    # print "THIS $this time: ", scalar localtime($this_mtime), "\n";
-    # print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
-
-    if (abs($this_mtime - $prev_mtime) > $durations{ $this }) {
-        print "Starting $this ... \n";
-        system(qw( sudo rsnapshot ), $this);
-    }
-
-} continue {
-    ($tcount, $this) = ($pcount, $prev);
+    last unless $worked;
 }
 
 # Safely unmount and ready LVM for unplug
