@@ -25,7 +25,7 @@ fi
 if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   export GOPATH="$HOME/go"
 else
-  export GOPATH="$HOME/projects/golang"
+  export GOPATH="$HOME/projects/go"
 fi
 
 if hash perl6 2> /dev/null; then
@@ -60,6 +60,7 @@ pre_paths=(
     $GOPATH/bin
     $HOME/zscript/bin
     /usr/local/opt/ruby/bin
+    $HOME/.yarn/bin
 )
 
 for add_path in $post_paths; do
