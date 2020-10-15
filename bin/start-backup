@@ -40,6 +40,7 @@ push @retains, 1,  $retains[-1];
 # Check the age of each backup and run the appropriate phases... longer phases
 # run first to get the older backup set saved
 my $now = time;
+my $first = 1;
 while (1) {
     my $worked = 0;
     my ($tcount, $this);
@@ -67,6 +68,7 @@ while (1) {
         # print "$prev -> $this: ", $this_mtime - $prev_mtime, " > ", $durations{ $this }, "?\n";
 
         if (abs($this_mtime - $prev_mtime) > $durations{ $this }) {
+            next if $this eq 'hourly' && $first == 0;
             print "Starting $this ... \n";
             system(qw( sudo rsnapshot ), $this);
             $worked++;
@@ -76,8 +78,13 @@ while (1) {
         ($tcount, $this) = ($pcount, $prev);
     }
 
+    $first = 0;
+
     last unless $worked;
 }
+
+# Show current backups
+system(qw( ls -l /var/cache/rsnapshot ));
 
 # Safely unmount and ready LVM for unplug
 system(qw( umount-backup ));
