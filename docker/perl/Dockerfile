@@ -19,6 +19,7 @@ RUN apt-get update --yes
 RUN apt-get install zsh --yes
 
 ENV HOME=/home/sterling
+ENV UID=1000
 
 RUN mkdir -p /home/sterling
 

@@ -3,7 +3,7 @@
 if [[ -n "$IN_DOTFILES_CONTAINER" ]]; then
     /usr/bin/perl "$@"
 else
-    USER_ARG="-u $UID"
+    USER_ARG="--env=$UID"
     EXTRA_BIND=""
     if [[ $(uname) == 'Darwin' ]]; then
       USER_ARG=""
