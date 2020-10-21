@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+use v5.32;
+use warnings;
+
+RUN: while (1) {
+  if ($ARGV[0] eq '--') {
+    shift @ARGV;
+  }
+
+  open my $fh, '-|', "@ARGV 2>&1"
+    or die "failed to start: @ARGV ($!)";
+  my @lines;
+  while (<$fh>) {
+    push @lines, $_;
+    print $_;
+  }
+  close $fh
+    or die "failed to finish: @ARGV ($!)";
+
+  for my $line (@lines) {
+    say "TRY $line";
+    if ($line =~ /^Can't locate (\S+) in \@INC/) {
+      say "MATCH $line: $1";
+      my $mod = $1;
+      $mod =~ s/.pm$//;
+      $mod =~ s{\/}{::};
+      system("cpanm --notest $mod") == 0
+        or die "failed to install $mod: $!";
+
+      next RUN;
+    }
+  }
+
+  last;
+}
+
