@@ -23,7 +23,7 @@ RUN: while (1) {
       say "MATCH $line: $1";
       my $mod = $1;
       $mod =~ s/.pm$//;
-      $mod =~ s{\/}{::};
+      $mod =~ s{\/}{::}g;
       system("cpanm --notest $mod") == 0
         or die "failed to install $mod: $!";
 
