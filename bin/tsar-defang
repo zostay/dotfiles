@@ -63,6 +63,7 @@ sub PRI($x?) {
   given $x//'' {
     when 'INFO' { fglime $_ }
     when 'WARN' { fgyellow $_ }
+    when 'DEBUG' { fggreen $_ }
     default     { fgred $_ }
   }
 }
