@@ -18,9 +18,7 @@ RUN: while (1) {
     or die "failed to finish: @ARGV ($!)";
 
   for my $line (@lines) {
-    say "TRY $line";
     if ($line =~ /^Can't locate (\S+) in \@INC/) {
-      say "MATCH $line: $1";
       my $mod = $1;
       $mod =~ s/.pm$//;
       $mod =~ s{\/}{::}g;
