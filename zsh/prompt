@@ -77,10 +77,32 @@ function _prompt_clockface {
     fi
 }
 
+function _kubecolor {
+    KUBECOLOR="$FG[171]"
+    case "$KUBECONFIG" in
+        *prod*)
+            KUBECOLOR=$FG[166]
+            ;;
+        *stg*)
+            KUBECOLOR=$FG[64]
+            ;;
+        *dev*)
+            KUBECOLOR=$FG[40]
+            ;;
+    esac
+    echo $KUBECOLOR
+}
+
+function _kubeconfig {
+    if [[ -n "$KUBECONFIG" ]]; then
+        echo "[$(basename "$KUBECONFIG")]"
+    fi
+}
+
 if [ "$ASCIINEMA_REC" = 1 ]; then
     PROMPT=$'%{$BG[236]$FG[39]%}%1d%{$FG[33]%}$(_prompt_git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%} %{$FX[reset]%}'
 else
-    PROMPT=$'%{$BG[142]$FG[0]%} $(_prompt_clockface) %T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(_prompt_git_branch)%{$FG[7]%}%# %{$BG[0]$FG[236]%}$MAC_SPACE %{$FX[reset]%}'
+    PROMPT=$'%{$BG[142]$FG[0]%} $(_prompt_clockface) %T %{$BG[236]$FG[142]%} %{$BG[236]$FG[$amime]%}%n%{$HOSTCOLOR%}@%m %{$FG[39]%}%1d%{$FG[33]%}$(_prompt_git_branch)%{$FG[7]%} %{$(_kubecolor)%}$(_kubeconfig)%{$FG[7]%}%# %{$BG[0]$FG[236]%}$MAC_SPACE %{$FX[reset]%}'
 fi
 
 export PROMPT
