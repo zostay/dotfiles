@@ -127,7 +127,7 @@ sub MAIN(
         }
 
         if @ns {
-          push @items, '{', @ns.join(', '), '}';
+          push @items, '{', @ns.sort.join(', '), '}';
         }
       }
 
