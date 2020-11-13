@@ -1,4 +1,4 @@
-#!/usr/bin/env perl6
+#!/usr/bin/env raku
 
 use v6;
 use JSON::Fast;
@@ -121,9 +121,10 @@ sub MAIN(
 
       if $add-non-standard {
         my @ns;
-        for %data.kv -> $k, $v {
+        for %data.kv -> $k, $v is copy {
           next if $k ∈ $STANDARD-FIELDS;
-          push @ns, fgaqua($k) ~ fgsilver("=") ~ fgfuschia("$v") ~ done-coloring;
+          $v = to-json($v, :!pretty) if $v !~~ Numeric | Stringy;
+          quietly push @ns, fgaqua($k) ~ fgsilver("=") ~ fgfuschia($v) ~ done-coloring;
         }
 
         if @ns {
