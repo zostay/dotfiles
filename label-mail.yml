@@ -1,18 +1,18 @@
 ---
 home:
-  - folder: Pseudo-Junk.Social_Network
+  - folder: JunkSocial
     days: 1
     clear: \Inbox
 
-  - folder: Pseudo-Junk.Social_Network
+  - folder: JunkSocial
     days: 30
     label: \Trash
 
-  - folder: Pseudo-Junk
+  - folder: JunkOther
     days: 3
     clear: \Inbox
 
-  - folder: Pseudo-Junk
+  - folder: JunkOther
     days: 90
     label: \Trash
 

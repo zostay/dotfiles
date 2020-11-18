@@ -13,6 +13,7 @@ RUN cpanm \
         Email::Address \
         Email::MIME \
         Email::Sender \
+        IO::Socket::SSL \
         Try::Tiny
 
 RUN apt-get update --yes

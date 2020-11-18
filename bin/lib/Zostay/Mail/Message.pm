@@ -533,6 +533,8 @@ sub best_alternate_folder {
 
     my @keywords = $self->keywords;
 
+    return 'JunkSocial' if $keywords[0] =~ /Social/;
+
     return $keywords[0] if @keywords;
     return 'gmail.All_Mail';
 }

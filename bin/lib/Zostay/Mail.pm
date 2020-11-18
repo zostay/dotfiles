@@ -224,7 +224,7 @@ sub vacuum {
         next unless -d "$MAILDIR/$folder";
 
         # Labeling errors: Foo, or \Important, or [ or ] or +Foo
-        if ($folder =~ /,$ | ^\+ | ^\\ | ^(?:\[|\])$ | ^Drafts$ | ^Home_School$ | ^Network$ | ^Pseudo-Junk.Social$ /x) {
+        if ($folder =~ /,$ | ^\+ | ^\\ | ^(?:\[|\])$ | ^Drafts$ | ^Home_School$ | ^Network$ | ^Pseudo-Junk.Social(_Network)?$ | ^Social[ ]Network$ | ^OtherJunk$ /x) {
             $log->("Dropping $folder");
             for my $msg ($self->messages($folder)) {
                 my $folder = $msg->best_alternate_folder;
@@ -256,13 +256,19 @@ sub vacuum {
 
                 # Something went wrong somewhere
                 if ($msg->has_keyword('Network')
-                || $msg->has_keyword('Pseudo-Junk.Social')) {
-                    $log->("Fixing Pseudo-Junk.Social Network to Pseudo-Junk.Social_Network.");
+                || $msg->has_keyword('Pseudo-Junk.Social')
+                || $msg->has_keyword('Pseudo-Junk/Social')
+                || $msg->has_keyword('Pseudo-Junk/Social_Network')
+                || $msg->has_keyword('Pseudo-Junk.Social_Network')) {
+                    $log->("Fixing Pseudo-Junk.Social Network to JunkSocial.");
                     $change++;
 
                     $msg->remove_keyword('Network');
                     $msg->remove_keyword('Pseudo-Junk.Social');
-                    $msg->add_keyword('Pseudo-Junk.Social_Network');
+                    $msg->remove_keyword('Pseudo-Junk/Social');
+                    $msg->remove_keyword('Pseudo-Junk/Social_Network');
+                    $msg->remove_keyword('Pseudo-Junk.Social_Network');
+                    $msg->add_keyword('JunkSocial');
                 }
 
                 # "Discussion" is magical. Google hates it. Do not use.
@@ -272,6 +278,15 @@ sub vacuum {
 
                     $msg->remove_keyword('Discussion');
                     $msg->add_keyword('Teamwork');
+                }
+
+                # OtherJunk should be JunkOther
+                if ($msg->has_keyword('OtherJunk')) {
+                    $log->("Fixing OtherJunk to JunkOther.");
+                    $change++;
+
+                    $msg->remove_keyword('OtherJunk');
+                    $msg->add_keyword('JunkOther');
                 }
 
                 $msg->save if $change;
