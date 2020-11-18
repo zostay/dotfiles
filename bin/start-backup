@@ -3,10 +3,15 @@
 use strict;
 use warnings;
 use autodie;
+use File::Basename qw( dirname );
 
 my $BACKUP_LV = "backup";
 my $BACKUP_DIR = "/var/cache/rsnapshot";
 my $BACKUP_CONF = "/etc/rsnapshot.conf";
+
+my $BIN_DIR = dirname($0);
+my $MOUNT_BACKUP = "$BIN_DIR/mount-backup";
+my $UMOUNT_BACKUP = "$BIN_DIR/umount-backup";
 
 my %durations = (
     yearly  => 365 * 24 * 60 * 60,
@@ -17,7 +22,8 @@ my %durations = (
 );
 
 # Safely ready LVM and mount
-system(qw( mount-backup ));
+$ENV{HOME} = "/home/sterling";
+system($MOUNT_BACKUP);
 
 # Fix dir perms for backup directories
 opendir(my $dh, $BACKUP_DIR);
@@ -87,4 +93,4 @@ while (1) {
 system(qw( ls -l /var/cache/rsnapshot ));
 
 # Safely unmount and ready LVM for unplug
-system(qw( umount-backup ));
+system($UMOUNT_BACKUP);
