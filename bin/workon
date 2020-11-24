@@ -16,7 +16,7 @@ function initialize_session {
             ;;
     esac
 
-    tmux select-window -t "$SESSION_NAME:0"
+    tmux select-window -t \="$SESSION_NAME:0"
 }
 
 SHORTEN=0
@@ -56,14 +56,14 @@ NAME="${NAME//\./-}"
 if [[ -n "$TMUX" ]] && tmux display-message -p '#S' | grep "^$NAME$" >/dev/null; then
     echo "This is the [$NAME] session!";
 else
-    if ! tmux has-session -t "$NAME" &>/dev/null; then
+    if ! tmux has-session -t \="$NAME" &>/dev/null; then
         tmux new-session -d -c "$DIR" -s "$NAME"
         initialize_session "$NAME" "$DIR"
     fi
 
     if [[ -n "$TMUX" ]]; then
-        tmux switch-client -t "$NAME"
+        tmux switch-client -t \="$NAME"
     else
-        tmux attach-session -t "$NAME"
+        tmux attach-session -t \="$NAME"
     fi
 fi
