@@ -14,6 +14,8 @@ RUN cpanm \
         Email::MIME \
         Email::Sender \
         IO::Socket::SSL \
+        Authen::SASL \
+        MIME::Base64 \
         Try::Tiny
 
 RUN apt-get update --yes

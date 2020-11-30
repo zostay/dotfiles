@@ -150,7 +150,7 @@ sub folder_rules {
 
     my %folders;
     for my $c ($self->rules) {
-        if ($c->{days} || ($c->{label} && any { $_ eq '\\Trash' } @{ $c->{label} }) || ($c->{mode} && $c->{move} eq 'gmail.Trash')) {
+        if ($c->{days} || ($c->{label} && any { $_ eq '\\Trash' } @{ $c->{label} }) || ($c->{move} && $c->{move} eq 'gmail.Trash')) {
             $c->{okay_date} = DateTime->now->subtract(
                 days => $c->{days} // 90,
             );
