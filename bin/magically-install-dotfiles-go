@@ -1,0 +1,10 @@
+#!/bin/zsh
+
+if [[ -z "$GOPATH" ]]; then
+    echo "No GOPATH. Install Go."
+fi
+
+go get github.com/zostay/dotfiles-go
+cd "$GOPATH/src/github.com/zostay/dotfiles-go"
+
+./scripts/install.sh

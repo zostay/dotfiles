@@ -1,0 +1,42 @@
+#!/usr/bin/env dotfiles-perl
+use v5.24;
+use warnings;
+
+use lib "$ENV{HOME}/bin/lib";
+
+use Getopt::Long;
+use List::Util qw( max sum );
+use Zostay::Mail;
+
+my $all = 0;
+my $dry_run = 0;
+GetOptions(
+    'a' => \$all,
+    'd' => \$dry_run,
+);
+
+my $mail = Zostay::Mail->new;
+
+# Try not to look at everything every 10 minutes, just every hour.
+if (!$all && time / 60 % 60 > 9) {
+    $mail->only_filter_recent({ hours => 2 });
+}
+
+say "Starting Dry Run.";
+my %actions = $mail->label_messages({ dry_run => $dry_run });
+
+my $total = (sum values %actions) // 0;
+if ($total > 0) {
+    my $kw    = max (5, map { length $_ } keys %actions);
+    my $cw    = max map { length $_ } ($total, values %actions);
+    for my $key (sort keys %actions) {
+        say sprintf " %-${kw}s : %${cw}d", $key, $actions{ $key };
+    }
+    say "-" x ($kw+2) . " " . "-" x ($cw+2);
+    say sprintf " %-${kw}s : %${cw}d", "Total", $total;
+}
+else {
+    say "Nothing to do.";
+}
+
+# vim: ft=perl ts=4 sts=4 sw=4

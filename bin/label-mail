@@ -1,39 +1,5 @@
-#!/usr/bin/env dotfiles-perl
-use v5.24;
-use warnings;
+#!/bin/zsh
 
-use lib "$ENV{HOME}/bin/lib";
+magically-install-dotfiles-go
 
-use Getopt::Long;
-use List::Util qw( max sum );
-use Zostay::Mail;
-
-my $all = 0;
-GetOptions(
-    'a' => \$all,
-);
-
-my $mail = Zostay::Mail->new;
-
-# Try not to look at everything every 10 minutes, just every hour.
-if (!$all && time / 60 % 60 > 9) {
-    $mail->only_filter_recent({ hours => 2 });
-}
-
-my %actions = $mail->label_messages;
-
-my $total = (sum values %actions) // 0;
-if ($total > 0) {
-    my $kw    = max (5, map { length $_ } keys %actions);
-    my $cw    = max map { length $_ } ($total, values %actions);
-    for my $key (sort keys %actions) {
-        say sprintf " %-${kw}s : %${cw}d", $key, $actions{ $key };
-    }
-    say "-" x ($kw+2) . " " . "-" x ($cw+2);
-    say sprintf " %-${kw}s : %${cw}d", "Total", $total;
-}
-else {
-    say "Nothing to do.";
-}
-
-# vim: ft=perl ts=4 sts=4 sw=4
+"$GOPATH/bin/label-mail" "%@"

@@ -179,21 +179,23 @@ sub folder_rules {
 }
 
 sub label_messages {
-    my ($self) = @_;
+    my ($self, $opts) = @_;
 
     my %actions;
     my %folders = $self->folder_rules;
     for my $folder (keys %folders) {
-        $self->label_folder_messages(\%actions, $folder, @{ $folders{ $folder } });
+        $self->label_folder_messages($opts, \%actions, $folder, @{ $folders{ $folder } });
     }
 
     return %actions;
 }
 
 sub label_folder_messages {
-    my ($self, $actions, $folder, @rules) = @_;
+    my ($self, $opts, $actions, $folder, @rules) = @_;
+    $opts //= {};
 
     for my $msg ($self->messages($folder)) {
+        $msg->dry_run(1) if $opts->{dry_run};
 
         # Always skip the spam, drafts, sent, and trash folders
         next if $msg->folder eq 'gmail.Spam';
