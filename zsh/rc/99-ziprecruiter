@@ -6,6 +6,9 @@ if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   export PATH=$PATH:$HOME/go/bin
 
   export PATH=$STARTERVIEW/bin:$STARTERVIEW/infrastructure/terraform/bin:$STARTERVIEW/infrastructure/dana:$PATH
+
+  export DASHBOARD_EXEC_HELPER=$HOME/bin/dashboard-exec-helper
+  export DASHBOARD_LOG_FILTER="$STARTERVIEW/bin/logfmt -L -s"
 fi
 
 # vim: ft=zsh

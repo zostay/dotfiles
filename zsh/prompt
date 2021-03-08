@@ -89,6 +89,9 @@ function _kubecolor {
         *dev*)
             KUBECOLOR=$FG[40]
             ;;
+        *build*)
+            KUBECOLOR=$FG[48]
+            ;;
     esac
     echo $KUBECOLOR
 }
