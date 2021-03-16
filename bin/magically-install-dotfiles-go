@@ -1,21 +1,35 @@
 #!/bin/zsh
 
+FORCE=""
+while getopts "f" opt; do
+    case $opt in
+        f)
+            FORCE=1
+            ;;
+    esac
+done
+shift $OPTIND-1
+
+TIMEFILE="$(mktemp)"
+trap "rm $TIMEFILE" QUIT INT EXIT
+
+REALBIN="$GOPATH/bin/$(basename $1)"
+
 if [[ -z "$GOPATH" ]]; then
     echo "No GOPATH. Install Go."
 fi
 
 if [[ "$(uname)" == "Darwin" ]]; then
   DATE=$(date -j -v "-1w" "+%Y%m%d%H%M")
-  touch -t "$DATE" "$TMPDIR/7daysago"
+  touch -t "$DATE" "$TIMEFILE"
 else
   DATE=$(date -d '7 days ago')
-  touch -d "$DATE" "$TMPDIR/7daysago"
+  touch -d "$DATE" "$TIMEFILE"
 fi
 
-if [[ "$GOPATH/bin/label-mail" -ot "$TMPDIR/7daysago" ]]; then
+if [[ -n "$FORCE" || "$REALBIN" -ot "$TIMEFILE" ]]; then
   go get -u github.com/zostay/dotfiles-go
   cd "$GOPATH/src/github.com/zostay/dotfiles-go"
 
   ./scripts/install.sh
 fi
-rm -f "$TMPDIR/7daysago"
