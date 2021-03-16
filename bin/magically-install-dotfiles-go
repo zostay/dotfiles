@@ -4,7 +4,18 @@ if [[ -z "$GOPATH" ]]; then
     echo "No GOPATH. Install Go."
 fi
 
-go get github.com/zostay/dotfiles-go
-cd "$GOPATH/src/github.com/zostay/dotfiles-go"
+if [[ "$(uname)" == "Darwin" ]]; then
+  DATE=$(date -j -v "-1w" "+%Y%m%d%H%M")
+  touch -t "$DATE" "$TMPDIR/7daysago"
+else
+  DATE=$(date -d '7 days ago')
+  touch -d "$DATE" "$TMPDIR/7daysago"
+fi
 
-./scripts/install.sh
+if [[ "$GOPATH/bin/label-mail" -ot "$TMPDIR/7daysago" ]]; then
+  go get -u github.com/zostay/dotfiles-go
+  cd "$GOPATH/src/github.com/zostay/dotfiles-go"
+
+  ./scripts/install.sh
+fi
+rm -f "$TMPDIR/7daysago"
