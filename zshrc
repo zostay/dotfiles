@@ -37,6 +37,16 @@ if [ -d $HOME/perl5/perlbrew/etc ]; then
   . $HOME/perl5/perlbrew/etc/bashrc
 fi
 
+# strip out all the paths outside of home, we will replace them
+paths=( $(echo $PATH | sed 's/:/ /g') )
+PATH=""
+for thispath in $paths; do
+    if [ "${thispath#$HOME}" = "$thispath" ]; then
+        PATH="$PATH:$thispath"
+    fi
+done
+PATH="${PATH:1}"
+
 post_paths=(
     $MOAR_BINDIR
     $MOAR_SHAREDIR/perl6/site/bin
@@ -49,6 +59,7 @@ post_paths=(
 )
 
 pre_paths=(
+    $GOPATH/bin
     $HOME/bin
     $HOME/local/bin
     $HOME/Documents/android/platform-tools
@@ -57,7 +68,6 @@ pre_paths=(
     $HOME/pebble-dev/PebbleSDK-current/bin
     $HOME/.rakudobrew/bin
     $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
-    $GOPATH/bin
     $HOME/zscript/bin
     /usr/local/opt/ruby/bin
     $HOME/.yarn/bin
@@ -65,13 +75,17 @@ pre_paths=(
 
 for add_path in $post_paths; do
     if [ -d "$add_path" ]; then
-        PATH="$PATH:$add_path"
+        if [ "${PATH#*$add_path}" = "$PATH" ]; then
+            PATH="$PATH:$add_path"
+        fi
     fi
 done
 
 for add_path in $pre_paths; do
     if [ -d "$add_path" ]; then
-        PATH="$add_path:$PATH"
+        if [ "${PATH#*$add_path}" = "$PATH" ]; then
+            PATH="$add_path:$PATH"
+        fi
     fi
 done
 
