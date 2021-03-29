@@ -1,34 +1,5 @@
-#!/usr/bin/env perl
-use v5.24;
-use warnings;
+#!/bin/zsh
 
-use lib "$ENV{HOME}/bin/lib";
+magically-install-dotfiles-go "$0"
 
-use Data::Printer filters => {
-    -external => [ 'DateTime' ],
-};
-use List::Util qw( max sum );
-use Zostay::Mail;
-
-my $folder = shift;
-my $file   = shift;
-
-die "missing folder" unless $folder;
-die "missing file"   unless $file;
-
-my $mail = Zostay::Mail->new;
-my $message = $mail->message($folder, $file);
-
-die "message not found" unless $message;
-
-$message->debug(1);
-$message->dry_run(1);
-
-my %folder_rules = $mail->folder_rules;
-my @rules = @{ $folder_rules{ $folder } // [] };
-for my $rule (@rules) {
-    p $rule;
-    $message->apply_rule($rule);
-}
-
-# vim: ts=4 sts=4 sw=4
+"$GOPATH/bin/label-message" "$@"
