@@ -71,7 +71,7 @@ pre_paths=(
     $HOME/zscript/bin
     /usr/local/opt/ruby/bin
     $HOME/.yarn/bin
-    $HOME/.platformio/penv/bin/pio
+    $HOME/.platformio/penv/bin
 )
 
 for add_path in $post_paths; do
