@@ -9,6 +9,12 @@ if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
 
   export DASHBOARD_EXEC_HELPER=$HOME/bin/dashboard-exec-helper
   export DASHBOARD_LOG_FILTER="$STARTERVIEW/bin/logfmt -L -s"
+
+  alias -g d-mp d-sterling01
+  alias -g d-sv d-sterling02
+  alias -g d-mw d-sterling03
+  alias -g d-sql d-sterling04
+  alias -g d-yp d-sterling05
 fi
 
 # vim: ft=zsh
