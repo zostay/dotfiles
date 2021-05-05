@@ -28,10 +28,10 @@ else
   export GOPATH="$HOME/projects/go"
 fi
 
-if hash perl6 2> /dev/null; then
-  MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
-  MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
-fi
+# if hash perl6 2> /dev/null; then
+#   MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
+#   MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
+# fi
 
 if [ -d $HOME/perl5/perlbrew/etc ]; then
   . $HOME/perl5/perlbrew/etc/bashrc
