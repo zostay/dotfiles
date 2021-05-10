@@ -33,10 +33,6 @@ fi
 #   MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
 # fi
 
-if [ -d $HOME/perl5/perlbrew/etc ]; then
-  . $HOME/perl5/perlbrew/etc/bashrc
-fi
-
 # strip out all the paths outside of home, we will replace them
 paths=( $(echo $PATH | sed 's/:/ /g') )
 PATH=""
@@ -89,6 +85,10 @@ for add_path in $pre_paths; do
         fi
     fi
 done
+
+if [ -d $HOME/perl5/perlbrew/etc ]; then
+  . $HOME/perl5/perlbrew/etc/bashrc
+fi
 
 export PATH
 export ZOSTAY_PATH_SETUP=1
