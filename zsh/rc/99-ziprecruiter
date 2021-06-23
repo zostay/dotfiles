@@ -8,13 +8,14 @@ if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   export PATH=$STARTERVIEW/bin:$STARTERVIEW/infrastructure/terraform/bin:$STARTERVIEW/infrastructure/dana:$PATH
 
   export DASHBOARD_EXEC_HELPER=$HOME/bin/dashboard-exec-helper
-  export DASHBOARD_LOG_FILTER="$STARTERVIEW/bin/logfmt -L -s"
+  export DASHBOARD_LOG_FILTER="$STARTERVIEW/bin/logfmt"
 
   alias -g d-mp=d-sterling01
   alias -g d-sv=d-sterling02
   alias -g d-mw=d-sterling03
   alias -g d-sql=d-sterling04
   alias -g d-yp=d-sterling05
+  alias -g d-wi=d-sterling06
 fi
 
 # vim: ft=zsh
