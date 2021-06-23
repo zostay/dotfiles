@@ -10,6 +10,7 @@
 --ignore-file=is:jquery.js
 --ignore-file=is:jquery-ui.js
 --ignore-file=is:jquery-ui.css
+--ignore-file=is:.session.vim
 
 --type-set 
 pdf:ext:pdf
