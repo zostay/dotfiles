@@ -105,3 +105,5 @@ tmpl-link-file msmtprc ~/.msmtprc
 tmpl-link-file signature ~/.signature
 
 link-file repl.rc ~/.re.pl/repl.rc
+
+link-file XCompose ~/.XCompose
