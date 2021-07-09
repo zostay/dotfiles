@@ -146,10 +146,6 @@ pm() { vim `perldoc -l $1`; }
 
 alias tmux="tmux -2"
 
-if [[ -d $HOME/.colorist ]]; then
-    . $HOME/.colorist/bashrc
-fi
-
 . $HOME/.zsh/functions/spectrum
 . $HOME/.zsh/prompt
 
