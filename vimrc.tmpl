@@ -372,7 +372,7 @@ function SaveMove(newName)
   redraw!
 endfunction
 
-command -nargs=1 Smv call SaveMove(<f-args>)
+command -complete=file -nargs=1 Smv call SaveMove(<f-args>)
 
 finish
 
