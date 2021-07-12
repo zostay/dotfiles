@@ -363,6 +363,17 @@ endfunction
 autocmd VimLeave * call SaveSession()
 let timer = timer_start(300, 'SaveSessionPeriodically', {'repeat': 1})
 
+function SaveMove(newName)
+  let filepath = expand('%')
+
+  execute 'saveas ' . a:newName
+  execute 'silent !rm -f ' . fnameescape(filepath)
+
+  redraw!
+endfunction
+
+command -nargs=1 Smv call SaveMove(<f-args>)
+
 finish
 
 # vim: ft=vim
