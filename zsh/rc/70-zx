@@ -1,3 +1,3 @@
 if [[ -d "$HOME/.zx" ]]; then
-    eval "$HOME/.zx/.zshenv"
+    source "$HOME/.zx/.zshenv"
 fi
