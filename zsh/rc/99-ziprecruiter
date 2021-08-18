@@ -16,6 +16,7 @@ if [ `cat $HOME/.dotfile-environment` = 'ziprecruiter' ]; then
   alias -g d-sql=d-sterling04
   alias -g d-yp=d-sterling05
   alias -g d-wi=d-sterling06
+  alias -g d-mi=d-sterling07
 fi
 
 # vim: ft=zsh
