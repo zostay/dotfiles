@@ -374,6 +374,12 @@ endfunction
 
 command -complete=file -nargs=1 Smv call SaveMove(<f-args>)
 
+" I don't like the gitgutter's gray background, yech
+highlight! link SignColumn LineNr
+highlight GitGutterAdd    guibg=black ctermbg=black ctermfg=green
+highlight GitGutterChange guibg=black ctermbg=black ctermfg=cyan
+highlight GitGutterDelete guibg=black ctermbg=black ctermfg=red
+
 finish
 
 # vim: ft=vim
