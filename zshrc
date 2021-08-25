@@ -105,9 +105,9 @@ bindkey -M viins "${terminfo[kcud1]/O/[}" down-line-or-history
 
 setopt correct cdablevars autolist
 setopt autocd recexact histignoredups
-setopt noclobber autopushd extendedglob
+setopt noclobber autopushd nonomatch
 setopt globcomplete bareglobqual prompt_subst
-setopt appendhistory nullglob incappendhistory
+setopt appendhistory incappendhistory
 setopt hist_ignore_space
 
 export HISTSIZE=10000
