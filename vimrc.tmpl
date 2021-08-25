@@ -344,6 +344,21 @@ nmap ,d :!mkdir -p %:p:h<CR>
 let g:airline_powerline_fonts = 1
 set guifont=Droid\ Sans\ Mono\ for\ Powerline:h12
 
+if !exists("*JiraBranchName")
+  function JiraBranchName(name)
+    return substitute(substitute(a:name, '^sterling\.', '', ''), '\..*$', '', '')
+  endfunction
+endif
+
+let g:airline#extensions#branch#enabled = 1
+let g:airline#extensions#branch#displayed_head_limit = 12
+if filereadable(expand("~/.dotfile-environment"))
+  let dfenv = readfile(expand("~/.dotfile-environment"))[0]
+  if dfenv == 'ziprecruiter'
+    let g:airline#extensions#branch#format = 'JiraBranchName'
+  endif
+endif
+
 highlight ColorColumn ctermbg=54
 call matchadd('ColorColumn', '\%81v', 100)
 
