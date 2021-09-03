@@ -11,12 +11,12 @@ auth_file = expanduser("~/.rotate-coder-mix-headers_auth.json")
 # My play list IDs
 
 # REAL
-# coder_mix_id = "PLj5I5pH5n-mV5O3FaXg34I5p85XOwrZiW"
-# rotation_id = "PLj5I5pH5n-mWh0842nIE6mnYAGfNtUBcG"
+coder_mix_id = "PLj5I5pH5n-mV5O3FaXg34I5p85XOwrZiW"
+rotation_id = "PLj5I5pH5n-mWh0842nIE6mnYAGfNtUBcG"
 
 # TEST
-coder_mix_id = "PLj5I5pH5n-mU3O6M7PaVJUnQPl3SvoEXp"
-rotation_id = "PLj5I5pH5n-mXB1gDis7_gkJHtsNm1juzG"
+# coder_mix_id = "PLj5I5pH5n-mU3O6M7PaVJUnQPl3SvoEXp"
+# rotation_id = "PLj5I5pH5n-mXB1gDis7_gkJHtsNm1juzG"
 
 # How many songs to rotate
 regular_rotate = 8
@@ -70,7 +70,7 @@ def rotate_ytmusic():
             regular_needs_replacement,
             best_needs_replacement)
 
-    print("\nMoving into of rotation:")
+    print("\nMoving into rotation:")
     display_tracks(incoming_regular, incoming_best)
 
     if len(incoming) > 0:
