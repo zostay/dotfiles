@@ -3,6 +3,7 @@
 from ytmusicapi import YTMusic
 from os.path import expanduser
 import argparse
+import sys
 #import pprint
 
 # Configuration goes here
@@ -121,10 +122,15 @@ def main():
     argp.add_argument("--setup", help = "Setup authentication", action = "store_true")
     args = argp.parse_args()
 
-    if args.setup:
-        setup_ytmusic()
-    else:
-        rotate_ytmusic()
+    try:
+        if args.setup:
+            setup_ytmusic()
+        else:
+            rotate_ytmusic()
+    except:
+        print("You probably need to login. Use the --setup option.")
+        e = sys.exc_info()[1]
+        print(e)
 
 if __name__ == "__main__":
     main()
