@@ -10,9 +10,6 @@
 [submodule "vim/bundle/vim-perl"]
 	path = vim/bundle/vim-perl
 	url = git@github.com:vim-perl/vim-perl.git
-[submodule "vim/bundle/vim-scala"]
-	path = vim/bundle/vim-scala
-	url = git@github.com:derekwyatt/vim-scala.git
 [submodule "vim/bundle/manpageview"]
 	path = vim/bundle/manpageview
 	url = git@github.com:dkasak/manpageview.git
@@ -43,15 +40,6 @@
 [submodule "vim/bundle/vim-less"]
 	path = vim/bundle/vim-less
 	url = git@github.com:groenewege/vim-less.git
-[submodule "vim/bundle/salt-vim"]
-	path = vim/bundle/salt-vim
-	url = git@github.com:saltstack/salt-vim.git
-[submodule "vim/bundle/calendar.vim"]
-	path = vim/bundle/calendar.vim
-	url = git@github.com:itchyny/calendar.vim.git
-[submodule "vim/bundle/dart-vim-plugin"]
-	path = vim/bundle/dart-vim-plugin
-	url = git@github.com:dart-lang/dart-vim-plugin.git
 [submodule "vim/bundle/vim-terraform"]
 	path = vim/bundle/vim-terraform
 	url = https://github.com/hashivim/vim-terraform
