@@ -5,7 +5,7 @@ source ~/.offlineimap.sh
 docker rm -f offlineimap
 docker pull zostay/offlineimap
 
-USER_ARG="-u $UID"
+USER_ARG="-u=$UID"
 if [[ $(uname) == 'Darwin' ]]; then
   USER_ARG=""
 fi
