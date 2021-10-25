@@ -26,6 +26,9 @@ tf:ext:tf,hcl,tfvars
 --type-set
 docker:is:Dockerfile
 
+--type-add
+docker:is:Appbase.Dockerfile
+
 --type-set
 perl6:ext:pm6,p6,pl6,pm,t,t6,pod,pod6,nqp,raku,rakutest,rakudoc
 
