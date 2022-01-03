@@ -22,10 +22,26 @@ function backup-file {
         mv "$1" "$HOME/.dotfiles.bak/${1:t}"
     fi
 }
-function link-file { __mkdir "${2:h}"; backup-file "$2"; ln -s "$PWD/$1" "$2" }
-function copy-file { __mkdir "${2:h}"; backup-file "$2"; cp "$PWD/$1" "$2" }
-function tmpl-file { __mkdir ".build"; template-dotfile $DOTFILE_ENV "$1" ".build/$1" }
-function tmpl-link-file { tmpl-file "$1"; [[ -f ".build/$1" ]] && link-file ".build/$1" "$2" }
+
+function link-file {
+  __mkdir "${2:h}"
+  backup-file "$2"
+  ln -s "$PWD/$1" "$2"
+}
+function copy-file {
+  __mkdir "${2:h}"
+  backup-file "$2"
+  cp "$PWD/$1" "$2"
+}
+function tmpl-file {
+  __mkdir ".build"
+  [[ "$1" =~ "/" ]] && __mkdir ".build/$(dirname "$1")"
+  template-dotfile $DOTFILE_ENV "$1" ".build/$1"
+}
+function tmpl-link-file {
+  tmpl-file "$1"
+  [[ -f ".build/$1" ]] && link-file ".build/$1" "$2"
+}
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:=$HOME/.config}
 
@@ -107,3 +123,5 @@ tmpl-link-file signature ~/.signature
 link-file repl.rc ~/.re.pl/repl.rc
 
 link-file XCompose ~/.XCompose
+
+tmpl-link-file minikube/offlineimap.yaml ~/.zostay-minikube/offlineimap.yaml

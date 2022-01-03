@@ -2,22 +2,26 @@
 
 source ~/.offlineimap.sh
 
-docker rm -f offlineimap
-docker pull zostay/offlineimap
+if [[ -n "$MINIKUBE" ]]; then
+  minikube kubectl -- apply -f $HOME/.zostay-minikube/offlineimap.yaml
+else
+  docker rm -f offlineimap
+  docker pull zostay/offlineimap
 
-USER_ARG="-u=$UID"
-if [[ $(uname) == 'Darwin' ]]; then
-  USER_ARG=""
+  USER_ARG="-u=$UID"
+  if [[ $(uname) == 'Darwin' ]]; then
+    USER_ARG=""
+  fi
+
+  docker run --name offlineimap                   \
+    -d                                            \
+    -v ~/.netrc:/opt/etc/netrc                    \
+    -v ~/Mail:/opt/var/mail                       \
+    -v ~/.offlineimap/index:/opt/var/index        \
+    -v ~/.offlineimaprc:/home/user/.offlineimaprc \
+    --env EMAIL="$MYEMAIL"                        \
+    --restart=always                              \
+    --cpu-quota=5000                              \
+    $USER_ARG                                     \
+    zostay/offlineimap
 fi
-
-docker run --name offlineimap                   \
-  -d                                            \
-  -v ~/.netrc:/opt/etc/netrc                    \
-  -v ~/Mail:/opt/var/mail                       \
-  -v ~/.offlineimap/index:/opt/var/index        \
-  -v ~/.offlineimaprc:/home/user/.offlineimaprc \
-  --env EMAIL="$MYEMAIL"                        \
-  --restart=always                              \
-  --cpu-quota=5000                              \
-  $USER_ARG                                     \
-  zostay/offlineimap

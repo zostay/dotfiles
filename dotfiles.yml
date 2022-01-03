@@ -1,6 +1,8 @@
 ---
 oses:
   '*':
+    "minikube/offlineimap.yaml":
+      home: /home/sterling
     kitty.conf:
       adjust_line_height: 0
       adjust_column_width: 0
@@ -8,6 +10,8 @@ oses:
       reattach_to_user_namespace: 0
 
   darwin:
+    "minikube/offlineimap.yaml":
+      home: /Users/sterling
     kitty.conf:
       adjust_line_height: -1
       adjust_column_width: -1
@@ -20,6 +24,9 @@ environments:
       ziprecruiter_email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
   home:
+    "minikube/offlineimap.yaml":
+      email:
+        __SECRET__: GIT_EMAIL_HOME
     gitconfig:
       email:
         __SECRET__: GIT_EMAIL_HOME
@@ -32,6 +39,7 @@ environments:
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_HOME
+      minikube: ""
     offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_HOME
@@ -41,6 +49,9 @@ environments:
     vimrc:
       tabstop: 4
   ziprecruiter:
+    "minikube/offlineimap.yaml":
+      email:
+        __SECRET__: GIT_EMAIL_ZIPRECRUITER
     gitconfig:
       email: 
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
@@ -53,6 +64,7 @@ environments:
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER
+      minikube: "very-yes"
     offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_ZIPRECRUITER

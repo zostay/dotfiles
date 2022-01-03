@@ -1,0 +1,45 @@
+[% Zostay::AUTOGEN_WARNING('#') %]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offlineimap
+  labels:
+    app: offlineimap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: offlineimap
+  template:
+    metadata:
+      labels:
+        app: offlineimap
+    spec:
+      containers:
+      - name: offlineimap
+        image: zostay/offlineimap
+        env:
+        - name: EMAIL
+          value: [% $email %]
+        volumeMounts:
+        - name: netrc
+          mountPath: /opt/etc/netrc
+        - name: mail
+          mountPath: /opt/var/mail
+        - name: index
+          mountPath: /opt/var/index
+        - name: oirc
+          mountPath: /home/user/.offlineimaprc
+      volumes:
+      - name: netrc
+        hostPath:
+          path: [% $home %]/.netrc
+      - name: mail
+        hostPath:
+          path: [% $home %]/Mail
+      - name: index
+        hostPath:
+          path: [% $home %]/.offlineimap/index
+      - name: oirc
+        hostPath:
+          path: [% $home %]/.offlineimaprc
