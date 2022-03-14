@@ -42,8 +42,8 @@ fi
 if [[ "${DIR:0:1}" != "/" ]]; then
     if [[ -d "$HOME/projects/$DIR" ]]; then
         DIR="$HOME/projects/$DIR"
-    elif [[ -d "$HOME/projects/go/src/github.com/$DIR" ]]; then
-        DIR="$HOME/projects/go/src/github.com/$DIR"
+    elif [[ -d "$GOPATH/src/github.com/$DIR" ]]; then
+        DIR="$GOPATH/src/github.com/$DIR"
     elif [[ -d "$PWD/$DIR" ]]; then
         DIR="$PWD/$DIR"
     else
