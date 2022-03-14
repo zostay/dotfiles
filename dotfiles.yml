@@ -48,6 +48,38 @@ environments:
       line1: https://sterling.hanenkamp.com/stfl/
     vimrc:
       tabstop: 4
+  solo.io:
+    "minikube/offlineimap.yaml":
+      email:
+        __SECRET__: GIT_EMAIL_SOLOIO
+    gitconfig:
+      email: 
+        __SECRET__: GIT_EMAIL_SOLOIO
+    msmtprc:
+      email:
+        __SECRET__: GIT_EMAIL_SOLOIO
+    muttrc:
+      email:
+        __SECRET__: GIT_EMAIL_SOLOIO
+    offlineimap.sh:
+      email:
+        __SECRET__: GIT_EMAIL_SOLOIO
+      minikube: "very-yes"
+    offlineimaprc:
+      email:
+        __SECRET__: GIT_EMAIL_SOLOIO
+      auth_type: oauth2
+      oauth2_client_id:
+        __SECRET__: IMAP_OAUTH2_CLIENT_ID
+      oauth2_client_secret:
+        __SECRET__: IMAP_OAUTH2_CLIENT_SECRET
+      oauth2_refresh_token:
+        __SECRET__: IMAP_OAUTH2_REFRESH_TOKEN
+    signature:
+      line1: solo.io (https://solo.io)
+      line2: Software Engineer
+    vimrc:
+      tabstop: 4
   ziprecruiter:
     "minikube/offlineimap.yaml":
       email:
