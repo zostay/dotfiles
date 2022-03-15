@@ -5,6 +5,9 @@ if [ `cat $HOME/.dotfile-environment` = 'solo.io' ]; then
   export PATH="$HOME/.gloo-mesh/bin:$PATH"
 
   export GOPRIVATE="github.com/solo-io"
+
+  export ISTIO_VERSION=$(istioctl version -ojson | jq '.clientVersion.version' -r)
+  export MallocNanoZone=0
 fi
 
 # vim: ft=zsh
