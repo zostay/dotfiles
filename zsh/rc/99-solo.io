@@ -13,7 +13,9 @@ if [ `cat $HOME/.dotfile-environment` = 'solo.io' ]; then
   export MallocNanoZone=0
   export GLOO_MESH_USE_KIND_IMAGE_V1_21=1
 
-  ulimit -n 1000
+  if (($(ulimit -n) < 1000)); then
+    ulimit -n 1000
+  fi
 fi
 
 # vim: ft=zsh
