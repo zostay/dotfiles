@@ -30,6 +30,7 @@ let g:Perl_AuthorRef  = 'ASH'
 let g:Perl_Email      = 'hanenkamp@cpan.org'
 
 let g:GoFmtAutoSaveToggle = 1
+"let g:go_gopls_gofumpt = 'true'
 
 "map q :e #
 "nmap ,b :buffers<CR>
@@ -391,9 +392,9 @@ command -complete=file -nargs=1 Smv call SaveMove(<f-args>)
 
 " I don't like the gitgutter's gray background, yech
 highlight! link SignColumn LineNr
-highlight GitGutterAdd    guibg=black ctermbg=black ctermfg=green
-highlight GitGutterChange guibg=black ctermbg=black ctermfg=cyan
-highlight GitGutterDelete guibg=black ctermbg=black ctermfg=red
+highlight! GitGutterAdd    guibg=black ctermbg=black ctermfg=green
+highlight! GitGutterChange guibg=black ctermbg=black ctermfg=cyan
+highlight! GitGutterDelete guibg=black ctermbg=black ctermfg=red
 
 finish
 
