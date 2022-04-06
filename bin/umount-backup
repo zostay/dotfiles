@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-source "$HOME/bin/backup.env"
+source "/home/sterling/bin/backup.env"
 
 sudo umount "$BACKUP_DIR"
 sudo lvchange -an "$BACKUP_LV"
