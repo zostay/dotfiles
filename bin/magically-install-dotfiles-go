@@ -28,7 +28,11 @@ else
 fi
 
 if [[ -n "$FORCE" || "$REALBIN" -ot "$TIMEFILE" ]]; then
-  go get -u github.com/zostay/dotfiles-go
+  if [[ $(go version | awk '{print$3}') == "1.18" ]]; then
+    go install github.com/zostay/dotfiles-go
+  else
+    go get -u github.com/zostay/dotfiles-go
+  fi
   cd "$GOPATH/src/github.com/zostay/dotfiles-go"
 
   ./scripts/install.sh
