@@ -64,7 +64,7 @@ environments:
     offlineimap.sh:
       email:
         __SECRET__: GIT_EMAIL_SOLOIO
-      minikube: "very-yes"
+      minikube: ""
     offlineimaprc:
       email:
         __SECRET__: GIT_EMAIL_SOLOIO
