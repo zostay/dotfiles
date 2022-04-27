@@ -17,11 +17,11 @@ if [ `cat $HOME/.dotfile-environment` = 'solo.io' ]; then
     ulimit -n 1000
   fi
 
-  alias k kubectl
-  alias kmg kubectl --context kind-mgmt-cluster
-  alias kc kubectl --context kind-cluster-1
-  alias kc1 kubectl --context kind-cluster-1
-  alias kc2 kubectl --context kind-cluster-2
+  alias k=kubectl
+  alias kmg="kubectl --context kind-mgmt-cluster"
+  alias kc="kubectl --context kind-cluster-1"
+  alias kc1="kubectl --context kind-cluster-1"
+  alias kc2="kubectl --context kind-cluster-2"
 fi
 
 # vim: ft=zsh
