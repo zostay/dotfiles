@@ -3,6 +3,8 @@ if [ `cat $HOME/.dotfile-environment` = 'home' ]; then
     alias ecr-login='eval $(aws ecr get-login --no-include-email --region us-east-2)'
 
     export SAFEPLACE=yep
+
+    alias k=kubectl
 fi
 
 # vim: ft=zsh
