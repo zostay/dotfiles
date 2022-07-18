@@ -63,10 +63,11 @@ fi
 if (( ! $SKIP_COMPLETIONS )); then
     echo "Setting up completion scripts."
 
+    setup-completion argocd
     setup-completion helm
     setup-completion istioctl
     setup-completion kubectl
-    setup-completion kops
+    #setup-completion kops
 
     if [[ -n "$GOPATH" && -d "$GOPATH/bin" ]]; then
         for cmd in "$GOPATH/bin/"*; do
@@ -76,9 +77,13 @@ if (( ! $SKIP_COMPLETIONS )); then
 
             cmd="$(basename "$cmd")"
 
-            if [[ "$cmd" = "iferr" ]]; then
-                continue
-            fi
+            [[ "$cmd" = "iferr" ]] && continue
+            [[ "$cmd" = "gosec" ]] && continue
+            [[ "$cmd" = "gotags" ]] && continue
+            [[ "$cmd" = "kops" ]] && continue
+            [[ "$cmd" = "label-mail" ]] && continue
+            [[ "$cmd" = "label-message" ]] && continue
+            [[ "$cmd" = "sqlboiler-"* ]] && continue
 
             setup-completion "$cmd"
         done
