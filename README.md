@@ -7,7 +7,7 @@ Clone this repo and initialize it:
     git submodule init
     git submodule update
 
-Add my email address to `~/.zshrc.local`
+Add this to `~/.zshrc.local`
 
     export LPASS_USERNAME="username"
 
