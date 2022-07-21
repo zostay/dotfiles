@@ -39,7 +39,7 @@ function setup-completion {
     if hash "$1" 2> /dev/null; then
         COMPLETION="$("$1" completion zsh 2> /dev/null)"
         if [[ $? -eq 0 ]]; then
-            echo "$COMPLETION" > "./zsh/rc/65-$base"
+            echo "$COMPLETION" > "./zsh/comp/_$base"
         fi
     fi
 }
