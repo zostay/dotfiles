@@ -78,12 +78,15 @@ if (( ! $SKIP_COMPLETIONS )); then
             cmd="$(basename "$cmd")"
 
             [[ "$cmd" = "iferr" ]] && continue
+            [[ "$cmd" = "forward-file" ]] && continue
             [[ "$cmd" = "gosec" ]] && continue
             [[ "$cmd" = "gotags" ]] && continue
             [[ "$cmd" = "kops" ]] && continue
             [[ "$cmd" = "label-mail" ]] && continue
             [[ "$cmd" = "label-message" ]] && continue
+            [[ "$cmd" = "nasapod" ]] && continue
             [[ "$cmd" = "sqlboiler-"* ]] && continue
+            [[ "$cmd" = "zap-cli" ]] && continue
 
             setup-completion "$cmd"
         done

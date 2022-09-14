@@ -36,11 +36,20 @@ function tmpl-link-file {
 
 function setup-completion {
     base=$(basename "$1")
-    if hash "$1" 2> /dev/null; then
-        COMPLETION="$("$1" completion zsh 2> /dev/null)"
-        if [[ $? -eq 0 ]]; then
-            echo "$COMPLETION" > "./zsh/comp/_$base"
-        fi
+    echo -n "Setting completion for $base ..."
+    if [[ -x "$GOPATH/bin/$base" ]]; then
+        build_completion "$GOPATH/bin/$base"
+    elif hash "$1" 2> /dev/null; then
+        build_completion "$1"
+    fi
+    echo "done."
+}
+
+function build_completion {
+    base=$(basename "$1")
+    COMPLETION="$("$1" completion zsh 2> /dev/null)"
+    if [[ $? -eq 0 ]]; then
+        echo "$COMPLETION" > "./zsh/comp/_$base"
     fi
 }
 

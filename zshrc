@@ -162,6 +162,10 @@ zstyle ':completion:*' ignored-patterns '.irssi|.vim'
 # . ~/.zsh/svk-completion
 # . ~/.zsh/gitc-completion
 
+for comp in $HOME/.zsh/comp/*; do
+    . $comp
+done
+
 if [ -d /usr/local/lib/node_modules ]; then
     export NODE_PATH=/usr/local/lib/node_modules
 fi
