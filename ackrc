@@ -1,6 +1,7 @@
 --follow
 
 --ignore-dir=.git
+--ignore-dir=.idea
 --type-add=yaml=.conf
 --ignore-dir=target
 --ignore-dir=.build
