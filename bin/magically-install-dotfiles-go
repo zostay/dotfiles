@@ -27,13 +27,6 @@ else
   touch -d "$DATE" "$TIMEFILE"
 fi
 
-if [[ -n "$FORCE" || "$REALBIN" -ot "$TIMEFILE" ]]; then
-  if [[ $(go version | awk '{print$3}') == "go1.18" ]]; then
-    go install github.com/zostay/dotfiles-go@latest
-  else
-    go get -u github.com/zostay/dotfiles-go
-    cd "$GOPATH/src/github.com/zostay/dotfiles-go"
-
-    ./scripts/install.sh
-  fi
+if [[ -n "$FORCE" || ! -f "$REALBIN" || "$REALBIN" -ot "$TIMEFILE" ]]; then
+  go install "github.com/zostay/dotfiles-go/cmd/$(basename $1)@latest"
 fi
