@@ -1,6 +1,13 @@
+# The gvm shell script does a bunch of evil stuff I don't like... so let's
+# detect gvm's presence and then keep it simple stupid.
+if [[ -f $HOME/.gvm/scripts/gvm ]]; then
+    ### EVIL ### source $HOME/.gvm/scripts/gvm
+    GVM_ROOT=$HOME/.gvm
+    export GVM_VERSION=$(cat "$GVM_ROOT/VERSION")
+    . "$GVM_ROOT/scripts/env/gvm"
+fi
+
 GOPATH=$HOME/projects/go
 mkdir -p $GOPATH/src
 
-if [[ -f $HOME/.gvm/scripts/gvm ]]; then
-    source $HOME/.gvm/scripts/gvm
-fi
+# vim: ft=zsh
