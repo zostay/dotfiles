@@ -66,6 +66,7 @@ if (( ! $SKIP_COMPLETIONS )); then
     setup-completion argocd
     setup-completion helm
     setup-completion istioctl
+    setup-completion kind
     setup-completion kubectl
     #setup-completion kops
 

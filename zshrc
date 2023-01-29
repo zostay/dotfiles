@@ -191,6 +191,7 @@ zstyle ':completion:*' ignored-patterns '.irssi|.vim'
 # . ~/.zsh/gitc-completion
 
 for comp in $HOME/.zsh/comp/*; do
+    #echo Initialize completion $comp ...
     . $comp
 done
 

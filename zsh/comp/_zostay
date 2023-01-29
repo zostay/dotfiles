@@ -1,0 +1,68 @@
+#compdef _zostay bin/zostay
+
+function _zostay {
+    local line
+
+    _arguments \
+        '1:command:(build build-loop create publish)' \
+        '*::args:->args'
+
+    case $line[1] in
+        build)
+            _zostay_build
+            ;;
+
+        build-loop)
+            _zostay_build_loop
+            ;;
+
+        create)
+            _zostay_create
+            ;;
+
+        publish)
+            _zostay_publish
+            ;;
+    esac
+}
+
+function _zostay_build {
+    _arguments \
+        '2:src:_path_files' \
+        '3:dest:_path_files' \
+        '--config=[configuration file]: :_path_files' \
+        '--pub-date=[publish date]'
+}
+
+function _zostay_build_loop {
+    _arguments \
+        '2:src:_path_files' \
+        '3:dest:_path_files' \
+        '--notify-port=[notification port number]' \
+        '--server-port=[server port number]' \
+        '--interval=[update frequency]' \
+        '--delay=[initial update delay]' \
+        '--auto-trigger=[always trigger frequency]' \
+        '--watch[watch for changes]' \
+        '--config-file=[configuration file]: :_path_files' \
+        '--pub-date=[publish date]'
+}
+
+function _zostay_create {
+    _arguments \
+        '--src=[source folder]: :_path_files' \
+        '--dst=[destination folder]: :_path_files' \
+        '--title=[title]' \
+        '--author=[author]' \
+        '--category=[category]' \
+        '--config-file=[configuration file]: :_path_files'
+}
+
+function _zostay_publish {
+    _arguments \
+        '2:post:_path_files' \
+        '--pub-date=[publish date]' \
+        '--src=[source folder]: :_path_files' \
+        '--dst=[destination folder]: :_path_files' \
+        '--config-file=[configuration file]: :_path_files'
+}
