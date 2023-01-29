@@ -5,7 +5,11 @@ if [[ -f $HOME/.gvm/scripts/gvm ]]; then
     GVM_ROOT=$HOME/.gvm
     export GVM_VERSION=$(cat "$GVM_ROOT/VERSION")
     . "$GVM_ROOT/scripts/env/gvm"
+
+    # if we don't run this, we won't get a go
+    gvm use go1.19.5 >> /dev/null
 fi
+
 
 GOPATH=$HOME/projects/go
 mkdir -p $GOPATH/src
