@@ -49,7 +49,7 @@ bin/check-dotfiles-environment || exit 1
 if (( ! $SKIP_SECRETS )); then
     echo "Pulling secrets."
 
-    SECRETS_HERE=(GIT_EMAIL_HOME GIT_EMAIL_ZIPRECRUITER)
+    SECRETS_HERE=(GIT_EMAIL_HOME GIT_EMAIL_SPEAKEASY)
 
     if hash brew 2>/dev/null; then
         SECRETS_HERE+=(HOMEBREW_GITHUB_API_TOKEN)

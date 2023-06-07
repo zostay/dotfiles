@@ -80,6 +80,38 @@ environments:
       line2: Software Engineer
     vimrc:
       tabstop: 4
+  speakeasy:
+    "minikube/offlineimap.yaml":
+      email:
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+    gitconfig:
+      email: 
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+    msmtprc:
+      email:
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+    muttrc:
+      email:
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+    offlineimap.sh:
+      email:
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+      minikube: ""
+    offlineimaprc:
+      email:
+        __SECRET__: GIT_EMAIL_SPEAKEASY
+      auth_type: oauth2
+      oauth2_client_id:
+        __SECRET__: IMAP_OAUTH2_CLIENT_ID
+      oauth2_client_secret:
+        __SECRET__: IMAP_OAUTH2_CLIENT_SECRET
+      oauth2_refresh_token:
+        __SECRET__: IMAP_OAUTH2_REFRESH_TOKEN
+    signature:
+      line1: Speakeasy API (https://speakeasyapi.dev)
+      line2: Founding Engineer
+    vimrc:
+      tabstop: 4
   ziprecruiter:
     "minikube/offlineimap.yaml":
       email:
