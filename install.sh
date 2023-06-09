@@ -81,6 +81,7 @@ if (( ! $SKIP_COMPLETIONS )); then
             [[ "$cmd" = "forward-file" ]] && continue
             [[ "$cmd" = "gosec" ]] && continue
             [[ "$cmd" = "gotags" ]] && continue
+            [[ "$cmd" = "gotestfmt" ]] && continue
             [[ "$cmd" = "kops" ]] && continue
             [[ "$cmd" = "label-mail" ]] && continue
             [[ "$cmd" = "label-message" ]] && continue
