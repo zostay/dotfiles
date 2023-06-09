@@ -106,6 +106,7 @@ tmpl-file vimrc
 link-file vim ~/.vim
 link-file vim/init.vim ~/.vimrc
 link-file vim $XDG_CONFIG_HOME/nvim
+link-file ideavimrc ~/.ideavimrc
 
 tmpl-link-file kitty.conf $XDG_CONFIG_HOME/kitty/kitty.conf
 
