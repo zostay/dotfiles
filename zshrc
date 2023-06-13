@@ -61,23 +61,51 @@ pre_paths=(
     $HOME/.rakudobrew/bin
     $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
     $HOME/zscript/bin
-    /usr/local/opt/ruby/bin
+    $HOMEBREW_PREFIX/opt/ruby/bin
     $HOME/.yarn/bin
     $HOME/.platformio/penv/bin
 )
 
+__path_contains() {
+    searchpath="$1"
+    for one_path in $path; do
+        if [[ "$one_path" == "$searchpath" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+__remove_path_element() {
+    searchpath="$1"
+    if __path_contains "$add_path"; then
+        path[${path[(Ie)$add_path]}]=()
+    fi
+}
+
+# strip out all the paths we want to insert so we insert them in the correct
+# order in the next part
+for add_path in $post_paths; do
+    __remove_path_element "$add_path"
+done
+
+for add_path in $pre_paths; do
+    __remove_path_element "$add_path"
+done
+
+# now add the paths back in
 for add_path in $post_paths; do
     if [ -d "$add_path" ]; then
-        if [ "${PATH#*$add_path}" = "$PATH" ]; then
-            PATH="$PATH:$add_path"
+        if ! __path_contains "$add_path"; then
+            path+=("$add_path")
         fi
     fi
 done
 
 for add_path in $pre_paths; do
     if [ -d "$add_path" ]; then
-        if [ "${PATH#*$add_path}" = "$PATH" ]; then
-            PATH="$add_path:$PATH"
+        if ! __path_contains "$add_path"; then
+            path=("$add_path" $path)
         fi
     fi
 done
