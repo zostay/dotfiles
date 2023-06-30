@@ -1,5 +1,15 @@
 #!/bin/zsh
 
+set -e
+
+REALBIN="$GOPATH/bin/$(basename $1)"
+GODOT_REPO="git@github.com:zostay/dotfiles-go.git"
+GODOT_HOME="$GOPATH/src/github.com/zostay/dotfiles-go"
+GODOT_BASE=$(dirname "$GODOT_HOME")
+GODOT_BRANCH=master
+GODOT_REMOTE=origin/master
+GODOT_INSTALLED_REV_FILE="$HOME/bin/.dotfiles-go-installed"
+
 FORCE=""
 while getopts "f" opt; do
     case $opt in
@@ -10,14 +20,43 @@ while getopts "f" opt; do
 done
 shift $OPTIND-1
 
+install_godot() {
+    echo Installing an updated version of dotfiles-go.
+    cd "$GODOT_HOME"
+    git stash
+    git checkout "$GODOT_BRANCH"
+    git pull
+    go install ./...
+    git rev-parse "$GODOT_BRANCH" >! "$GODOT_INSTALLED_REV_FILE"
+}
+
+check_install() {
+    prog="$1"
+    if ! hash "$prog" 2>/dev/null; then
+        echo Please install $prog
+    fi
+}
+
+check_install go
+check_install git
+
+[[ -z "$GOPATH" ]] && (echo GOPATH is not set.; exit 1)
+
+if [[ ! -d "$GODOT_HOME" ]]; then
+    mkdir -p "$GODOT_BASE"
+    cd "$GODOT_BASE"
+    git clone "$GODOT_REPO"
+fi
+
+cd "$GODOT_HOME"
+
+if [[ -n "$FORCE" || ! -f "$GODOT_INSTALLED_REV_FILE" || ! -f "$REALBIN" ]]; then
+    install_godot
+    exit 0
+fi
+
 TIMEFILE="$(mktemp)"
 trap "rm $TIMEFILE" QUIT INT EXIT
-
-REALBIN="$GOPATH/bin/$(basename $1)"
-
-if [[ -z "$GOPATH" ]]; then
-    echo "No GOPATH. Install Go."
-fi
 
 if [[ "$(uname)" == "Darwin" ]]; then
   DATE=$(date -j -v "-1w" "+%Y%m%d%H%M")
@@ -27,6 +66,15 @@ else
   touch -d "$DATE" "$TIMEFILE"
 fi
 
-if [[ -n "$FORCE" || ! -f "$REALBIN" || "$REALBIN" -ot "$TIMEFILE" ]]; then
-  go install "github.com/zostay/dotfiles-go/cmd/$(basename $1)@latest"
+if [[ "$GODOT_INSTALLED_REV_FILE" -ot "$TIMEFILE" ]]; then
+    touch "$GODOT_INSTALLED_REV_FILE"
+    git fetch
+fi
+
+installed_hash=$(cat "$GODOT_INSTALLED_REV_FILE")
+current_hash=$(git rev-parse "$GODOT_BRANCH")
+remote_hash=$(git rev-parse "$GODOT_REMOTE")
+
+if [[ "$installed_hash" != "$current_hash" || "$installed_hash" != "$remote_hash" ]]; then
+    install_godot
 fi

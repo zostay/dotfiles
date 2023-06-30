@@ -1,2 +1,3 @@
 .build
 vim/spell/*.spl
+bin/.dotfiles-go-installed
