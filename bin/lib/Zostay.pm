@@ -100,13 +100,13 @@ sub dotfiles_environment {
 sub get_secret($) {
     my $name = shift;
     open my $fh, '-|', "$ENV{HOME}/bin/zostay-get-secret", $name
-        or die "failed to start zostay-get-secret: $!\n";
+        or die "failed to start zostay-get-secret $name: $!\n";
 
     my $secret = do { local $/; <$fh> };
     chomp $secret;
 
     close $fh
-        or die "failed to run zostay-get-secret ($?): $!\n";
+        or die "failed to run zostay-get-secret $name ($?): $!\n";
 
     return $secret;
 }
