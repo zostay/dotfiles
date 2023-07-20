@@ -43,6 +43,7 @@ post_paths=(
     $MOAR_BINDIR
     $MOAR_SHAREDIR/perl6/site/bin
     /usr/local/Cellar/rakudo-star/bin
+    /usr/local/share/dotnet
     /opt/local/bin
     /usr/local/sbin
     /sw/bin
