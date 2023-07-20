@@ -61,3 +61,6 @@
 [submodule "vim/bundle/Dockerfile.vim"]
 	path = vim/bundle/Dockerfile.vim
 	url = git@github.com:ekalinin/Dockerfile.vim.git
+[submodule "vim/bundle/typescript-vim"]
+	path = vim/bundle/typescript-vim
+	url = git@github.com:leafgarland/typescript-vim.git
