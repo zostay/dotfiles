@@ -83,6 +83,7 @@ if (( ! $SKIP_COMPLETIONS )); then
             [[ "$cmd" = "gosec" ]] && continue
             [[ "$cmd" = "gotags" ]] && continue
             [[ "$cmd" = "gotestfmt" ]] && continue
+            [[ "$cmd" = "json2yaml" ]] && continue
             [[ "$cmd" = "kops" ]] && continue
             [[ "$cmd" = "label-mail" ]] && continue
             [[ "$cmd" = "label-message" ]] && continue
