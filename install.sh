@@ -87,6 +87,7 @@ if (( ! $SKIP_COMPLETIONS )); then
             [[ "$cmd" = "label-mail" ]] && continue
             [[ "$cmd" = "label-message" ]] && continue
             [[ "$cmd" = "nasapod" ]] && continue
+            [[ "$cmd" = "protoc-gen-apigw" ]] && continue
             [[ "$cmd" = "sqlboiler-"* ]] && continue
             [[ "$cmd" = "zap-cli" ]] && continue
 
