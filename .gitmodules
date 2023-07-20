@@ -21,7 +21,7 @@
 	url = git@github.com:godlygeek/tabular.git
 [submodule "vim/bundle/matchit"]
 	path = vim/bundle/matchit
-	url = git@github.com:tmhedberg/matchit.git
+	url = git@github.com:chrisbra/matchit.git
 [submodule "vim/bundle/pathogen"]
 	path = vim/bundle/pathogen
 	url = git@github.com:tpope/vim-pathogen.git
