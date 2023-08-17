@@ -41,3 +41,6 @@ gotest:match:_test.go$
 
 --type-set
 proto:ext:proto
+
+--type-set
+stmpl:ext:stmpl
