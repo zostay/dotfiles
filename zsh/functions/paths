@@ -1,0 +1,39 @@
+__prepend_paths() {
+    for add_path in $@; do
+        if [[ -d "$add_path" ]]; then
+            path[1,0]=("$add_path")
+        fi
+    done
+}
+
+__prepend_path() { __prepend_paths "$@" }
+
+__append_paths() {
+    for add_path in $@; do
+        if [[ -d "$add_path" ]]; then
+            path+=("$add_path")
+        fi
+    done
+}
+
+__append_path() { __append_paths "$@" }
+
+__remove_path() {
+    del_path="$1"
+    while true; do
+        if ((${path[(Ie)$del_path]} > 0)); then
+            path[${path[(Ie)$del_path]}]=()
+        else
+            return 0
+        fi
+    done
+}
+
+__dedupe_paths() {
+    for p in $path; do
+        __remove_path "$p"
+        path+=("$p")
+    done
+}
+
+# vim: ft=zsh

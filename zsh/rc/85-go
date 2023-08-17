@@ -1,3 +1,5 @@
+. "$HOME/.zsh/functions/paths"
+
 # The gvm shell script does a bunch of evil stuff I don't like... so let's
 # detect gvm's presence and then keep it simple stupid.
 if [[ -f $HOME/.gvm/scripts/gvm ]]; then
@@ -10,8 +12,9 @@ if [[ -f $HOME/.gvm/scripts/gvm ]]; then
     gvm use go1.19.5 >> /dev/null
 fi
 
-
 GOPATH=$HOME/projects/go
 mkdir -p $GOPATH/src
+
+__prepend_paths "$GOPATH/bin"
 
 # vim: ft=zsh

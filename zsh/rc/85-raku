@@ -1,9 +1,17 @@
+. "$HOME/.zsh/functions/paths"
+
 # if hash perl6 2> /dev/null; then
 #   MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
 #   MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
+#   post_paths+=("$MOAR_BINDIR")
+#   post_paths+=("$MOAR_SHAREDIR/perl6/site/bin")
 # fi
 
 export PERL6LIB="$HOME/perl6/lib"
+__prepend_paths \
+    /usr/local/Cellar/rakudo-star/bin \
+    "$HOME/.rakudobrew/bin" \
+    "$HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin"
 
 # if [[ -x "$HOME/.local/share/rakubrew/bin/rakubrew" ]]; then
 #     eval "$($HOME/.local/share/rakubrew/bin/rakubrew init Zsh)"

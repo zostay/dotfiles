@@ -1,0 +1,16 @@
+. "$HOME/.zsh/functions/paths"
+
+# finally...
+__dedupe_paths
+
+export PATH
+export ZOSTAY_PATH_SETUP=1
+
+unset -f __prepend_paths
+unset -f __prepend_path
+unset -f __append_paths
+unset -f __append_path
+unset -f __remove_path
+unset -f __dedupe_paths
+
+# vim: ft=zsh

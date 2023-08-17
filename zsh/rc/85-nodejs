@@ -1,3 +1,5 @@
+. "$HOME/.zsh/functions/paths"
+
 if [ -d /usr/local/lib/node_modules ]; then
     export NODE_PATH=/usr/local/lib/node_modules
 fi
@@ -6,5 +8,7 @@ if [[ -d "$HOME/.nvm" ]]; then
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 fi
+
+__prepend_path "$HOME/.yarn/bin"
 
 # vim: ft=zsh

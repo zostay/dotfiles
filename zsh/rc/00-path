@@ -1,0 +1,30 @@
+. "$HOME/.zsh/functions/paths"
+
+# ensure all these are here somewhere
+post_paths=(
+    /opt/local/bin
+    /usr/local/sbin
+    /sw/bin
+    /snap/bin
+    /opt/X11/bin
+    /usr/bin
+    /bin
+    /usr/sbin
+    /sbin
+)
+
+for p in $post_paths; do
+    __append_paths "$p"
+done
+
+# ensure my preferred paths are first
+pre_paths=(
+    "$HOME/bin"
+    "$HOME/local/bin"
+)
+
+for p in $pre_paths; do
+    __prepend_paths "$p"
+done
+
+# vim: ft=zsh

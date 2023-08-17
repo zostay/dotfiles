@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+# should probably run in .zprofile, but if not...
+if [[ -z "$HOMEBREW_PREFIX" ]]; then
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+fi
+
+if hash brew 2>/dev/null; then
+    export HOMEBREW_GITHUB_API_TOKEN=$(zostay-get-secret HOMEBREW_GITHUB_API_TOKEN)
+fi

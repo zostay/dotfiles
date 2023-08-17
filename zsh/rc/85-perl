@@ -18,4 +18,8 @@ pm() { vim `perldoc -l $1`; }
 
 alias pl='perldoc -l'
 
+if [ -d $HOME/perl5/perlbrew/etc ]; then
+  . $HOME/perl5/perlbrew/etc/bashrc
+fi
+
 # vim: ft=zsh

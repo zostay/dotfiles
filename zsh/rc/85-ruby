@@ -1,0 +1,5 @@
+. "$HOME/.zsh/functions/paths"
+
+__prepend_paths "$HOMEBREW_PREFIX/opt/ruby/bin"
+
+# vim: ft=zsh
