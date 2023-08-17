@@ -1,0 +1,3 @@
+if [[ -d /var/lib/snapd/desktop ]]; then
+    export XDG_DATA_DIRS="$XDG_DATA_DIRS:/var/lib/snapd/desktop/"
+fi

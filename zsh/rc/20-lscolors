@@ -1,2 +1,4 @@
 # Bold colors show better on my screen
 export LSCOLORS=ExFxCxDxBxegedabagacad
+
+# vim: ft=zsh

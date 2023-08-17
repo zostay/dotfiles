@@ -1,0 +1,93 @@
+export GOPATH="$HOME/projects/go"
+
+# strip out all the paths outside of home, we will replace them
+paths=( $(echo $PATH | sed 's/:/ /g') )
+PATH=""
+for thispath in $paths; do
+    if [ "${thispath#$HOME}" = "$thispath" ]; then
+        PATH="$PATH:$thispath"
+    fi
+done
+PATH="${PATH:1}"
+
+post_paths=(
+    $MOAR_BINDIR
+    $MOAR_SHAREDIR/perl6/site/bin
+    /usr/local/Cellar/rakudo-star/bin
+    /usr/local/share/dotnet
+    /opt/local/bin
+    /usr/local/sbin
+    /sw/bin
+    /snap/bin
+    /opt/X11/bin
+)
+
+pre_paths=(
+    $GOPATH/bin
+    $HOME/bin
+    $HOME/local/bin
+    $HOME/Documents/android/platform-tools
+    $HOME/Documents/android/tools
+    $HOME/Documents/arm-cs-tools/bin
+    $HOME/pebble-dev/PebbleSDK-current/bin
+    $HOME/.rakudobrew/bin
+    $HOME/.rakudobrew/moar-nom/install/share/perl6/site/bin
+    $HOME/zscript/bin
+    $HOMEBREW_PREFIX/opt/ruby/bin
+    $HOME/.yarn/bin
+    $HOME/.platformio/penv/bin
+    $HOME/Library/Python/3.9/bin
+)
+
+__path_contains() {
+    searchpath="$1"
+    for one_path in $path; do
+        if [[ "$one_path" == "$searchpath" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+__remove_path_element() {
+    searchpath="$1"
+    if __path_contains "$add_path"; then
+        path[${path[(Ie)$add_path]}]=()
+    fi
+}
+
+# strip out all the paths we want to insert so we insert them in the correct
+# order in the next part
+for add_path in $post_paths; do
+    __remove_path_element "$add_path"
+done
+
+for add_path in $pre_paths; do
+    __remove_path_element "$add_path"
+done
+
+# now add the paths back in
+for add_path in $post_paths; do
+    if [ -d "$add_path" ]; then
+        if ! __path_contains "$add_path"; then
+            path+=("$add_path")
+        fi
+    fi
+done
+
+for add_path in $pre_paths; do
+    if [ -d "$add_path" ]; then
+        if ! __path_contains "$add_path"; then
+            path=("$add_path" $path)
+        fi
+    fi
+done
+
+if [ -d $HOME/perl5/perlbrew/etc ]; then
+  . $HOME/perl5/perlbrew/etc/bashrc
+fi
+
+export PATH
+export ZOSTAY_PATH_SETUP=1
+
+# vim: ft=zsh

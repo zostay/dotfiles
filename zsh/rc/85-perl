@@ -1,0 +1,21 @@
+pd() {
+    if perldoc "$1" >& /dev/null; then
+        vim -R -c "Man $1" -c "bdelete 1"
+    else
+        echo "Module not found";
+    fi
+}
+
+pf() {
+    if perldoc -f "$1" >& /dev/null; then
+        vim -R -c "Man $1.pl" -c "bdelete 1";
+    else
+        echo "Function not found";
+    fi
+}
+
+pm() { vim `perldoc -l $1`; }
+
+alias pl='perldoc -l'
+
+# vim: ft=zsh

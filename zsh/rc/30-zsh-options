@@ -1,0 +1,49 @@
+# UTF-8 terminal please
+export LC_ALL="en_US.UTF-8"
+export LANG="en_US.UTF-8"
+stty iutf8
+
+bindkey -v
+
+# Make sure Ubuntu does not eff up my up/down arrows
+bindkey -M viins "$terminfo[cuu1]" up-line-or-history
+bindkey -M viins "$terminfo[kcuu1]" up-line-or-history
+bindkey -M viins "$terminfo[kcud1]" down-line-or-history
+bindkey -M viins "${terminfo[kcuu1]/O/[}" up-line-or-history
+bindkey -M viins "${terminfo[kcud1]/O/[}" down-line-or-history
+
+
+setopt correct cdablevars autolist
+setopt autocd recexact histignoredups
+setopt noclobber autopushd nonomatch
+setopt globcomplete bareglobqual prompt_subst
+setopt appendhistory incappendhistory
+setopt hist_ignore_space
+
+export HISTSIZE=10000
+export SAVEHIST=10000
+export HISTFILE=$HOME/.zhistory
+
+. $HOME/.zsh/functions/spectrum
+. $HOME/.zsh/prompt
+
+if [[ -d /usr/local/share/zsh/site-functions ]]; then
+  fpath=($HOME/.zsh/comp /usr/local/share/zsh/site-functions $fpath)
+fi
+
+autoload -Uz compinit
+compinit -u
+
+zmodload -a colors
+zmodload -a autocomplete
+zmodload -a complist
+
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*' ignored-patterns '.irssi|.vim'
+
+for comp in $HOME/.zsh/comp/*; do
+    #echo Initialize completion $comp ...
+    . $comp
+done
+
+# vim: ft=zsh

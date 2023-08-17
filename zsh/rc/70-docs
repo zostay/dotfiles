@@ -1,0 +1,13 @@
+man() {
+    local OPTIND o
+    if getopts "k" o; then
+        /usr/bin/man "$@"
+    else
+        /usr/bin/man -w "$@" || return 1;
+        vim -R -c "Man $1 $2" -c "bdelete 1";
+    fi
+}
+
+info() { vim -R -c "Man $1.i" -c "bdelete 1"; }
+
+# vim: ft=zsh

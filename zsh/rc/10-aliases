@@ -1,0 +1,21 @@
+if [ `uname` = "Darwin" ]; then
+    alias ls="ls -G"
+elif [ `uname` = "Linux" ]; then
+    #umask 077
+
+    alias ls='ls --color=auto'
+fi
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+alias tmux="tmux -2"
+
+alias less='less -F'
+alias grep='grep --color=auto'
+alias unscram='perl -wle "print qq|\cO|"'
+alias irc='autossh -n irssi qubling'
+
+
+# vim: ft=zsh

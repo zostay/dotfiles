@@ -1,3 +1,12 @@
+# if hash perl6 2> /dev/null; then
+#   MOAR_BINDIR=`perl6 -V | grep moar::bindir | cut -d= -f2`
+#   MOAR_SHAREDIR=`perl6 -V | grep perl6::libdir | cut -d= -f2`
+# fi
+
+export PERL6LIB="$HOME/perl6/lib"
+
 # if [[ -x "$HOME/.local/share/rakubrew/bin/rakubrew" ]]; then
 #     eval "$($HOME/.local/share/rakubrew/bin/rakubrew init Zsh)"
 # fi
+
+# vim: ft=zsh
