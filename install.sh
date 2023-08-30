@@ -3,15 +3,11 @@
 # Thanks, Frew, for the inspiration!
 
 PATH="$PWD/bin:$PATH"
-SKIP_SECRETS=0
 SKIP_COMPLETIONS=0
 while getopts "s" opt; do
     case $opt in
         c)
             SKIP_COMPLETIONS=1
-            ;;
-        s)
-            SKIP_SECRETS=1
             ;;
     esac
 done
@@ -45,20 +41,6 @@ if hash lpass 2> /dev/null && [[ -z "$LPASS_USERNAME" ]]; then
 fi
 
 bin/check-dotfiles-environment || exit 1
-
-if (( ! $SKIP_SECRETS )); then
-    echo "Pulling secrets."
-
-    SECRETS_HERE=(GIT_EMAIL_HOME GIT_EMAIL_SPEAKEASY)
-
-    if hash brew 2>/dev/null; then
-        SECRETS_HERE+=(HOMEBREW_GITHUB_API_TOKEN)
-    fi
-
-    echo $SECRETS_HERE
-
-    bin/zostay-pull-secrets $SECRETS_HERE
-fi
 
 if (( ! $SKIP_COMPLETIONS )); then
     echo "Setting up completion scripts."
@@ -103,6 +85,8 @@ link-file bin ~/bin
 
 link-file ackrc ~/.ackrc
 tmpl-link-file tmux.conf ~/.tmux.conf
+
+link-file ghost.yaml ~/.ghost.yaml
 
 link-file colorist ~/.colorist
 

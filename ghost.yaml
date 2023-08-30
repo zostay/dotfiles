@@ -1,0 +1,41 @@
+master: local
+keepers:
+  masterPasswordsCache:
+    type: cache
+    touch_on_read: true
+    keeper: pinentry
+
+  masterPasswords:
+    type: policy
+    keeper: masterPasswordsCache
+    lifetime: "24h"
+    acceptance: allow
+
+  masterPasswordsServer:
+    type: http
+
+  local:
+    type: keepass
+    path: ~/.zostay.kdbx
+    master_password: 
+      __SECRET__:
+        keeper: masterPasswordsServer
+        secret: Keepass Master Password
+        field: password
+
+  lastpass:
+    type: lastpass
+    username: sterling@hanenkamp.com
+    password:
+      __SECRET__:
+        keeper: masterPasswordsServer
+        secret: LastPass Password
+        field: password
+
+  pinentry:
+    type: human
+    questions:
+      - id: LastPass Password
+        ask_for: [ password ]
+      - id: Keepass Master Password
+        ask_for: [ password ]
