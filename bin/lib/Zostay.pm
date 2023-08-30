@@ -14,7 +14,6 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     emkpath echdir esystem esymlink erename
     %FG %BG %FX xyz_color
-    get_secret inject_secrets
     dotfiles_os
     dotfiles_environment
     dotfiles_config_raw
@@ -99,16 +98,16 @@ sub dotfiles_environment {
 
 sub get_secret($) {
     my $name = shift;
-    open my $fh, '-|', "$ENV{HOME}/bin/zostay-get-secret", $name
-        or die "failed to start zostay-get-secret $name: $!\n";
+    open my $fh, "-|", "ghost", "get", "--name", $name, "-o", "password", "--show-password",
+        or die "failed to start ghost get --name $name (make sure it is installed): $!\n";
 
     my $secret = do { local $/; <$fh> };
     chomp $secret;
 
     close $fh
-        or die "failed to run zostay-get-secret $name ($?): $!\n";
+        or die "failed to run ghost get --name $name ($?): $!\n";
 
-    return $secret;
+    return $secret
 }
 
 sub inject_secrets($;$) {
