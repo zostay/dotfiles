@@ -13,8 +13,9 @@ if [[ -f $HOME/.gvm/scripts/gvm ]]; then
 fi
 
 GOPATH=$HOME/projects/go
+GOBIN=$GOPATH/bin
 mkdir -p $GOPATH/src
 
-__prepend_paths "$GOPATH/bin"
+__prepend_paths "$GOBIN"
 
 # vim: ft=zsh
