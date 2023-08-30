@@ -116,3 +116,8 @@ ziprecruiter:
   - folder: News
     days: 90
     move: \Trash
+
+speakeasy:
+  - folder: Oncall
+    days: 3
+    clear: \Inbox
