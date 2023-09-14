@@ -44,3 +44,6 @@ proto:ext:proto
 
 --type-set
 stmpl:ext:stmpl
+
+--type-set
+markdown:ext:md,mkd,mdx
