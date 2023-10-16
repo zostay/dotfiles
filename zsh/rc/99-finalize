@@ -1,5 +1,15 @@
 . "$HOME/.zsh/functions/paths"
 
+# ensure my preferred paths are first
+pre_paths=(
+    "$HOME/bin"
+    "$HOME/local/bin"
+)
+
+for p in $pre_paths; do
+    __prepend_paths "$p"
+done
+
 # finally...
 __dedupe_paths
 

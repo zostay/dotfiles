@@ -1,5 +1,6 @@
 __prepend_paths() {
     for add_path in $@; do
+        __remove_path "$add_path"
         if [[ -d "$add_path" ]]; then
             path[1,0]=("$add_path")
         fi
@@ -10,6 +11,7 @@ __prepend_path() { __prepend_paths "$@" }
 
 __append_paths() {
     for add_path in $@; do
+        __remove_path "$add_path"
         if [[ -d "$add_path" ]]; then
             path+=("$add_path")
         fi
