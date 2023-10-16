@@ -32,6 +32,15 @@ keepers:
         secret: LastPass Password
         field: password
 
+  lastpass-backup:
+    type: keepass
+    path: ~/.zostay.lastpass-backup.kdbx
+    master_password:
+      __SECRET__:
+        keeper: masterPasswordsServer
+        secret: Keepass Master Password
+        field: password
+
   pinentry:
     type: human
     questions:
