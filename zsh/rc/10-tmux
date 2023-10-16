@@ -1,0 +1,11 @@
+MY_TMPDIR="$TMPDIR"
+if [[ -z "$MY_TMPDIR" ]]; then
+    MY_TMPDIR=/tmp
+fi
+export TMUX_TMP="$MY_TMPDIR/tmux-$UID"
+
+if ! tmux has-session -t stuff &> /dev/null; then
+    tmux new-session -d -s stuff
+    tmux new-window -n edit -t "stuff:" "$HOME/bin/resize-window-fix; vim"
+    tmux select-window -t "stuff:0"
+fi
