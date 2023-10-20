@@ -9,7 +9,7 @@ if [[ -f $HOME/.gvm/scripts/gvm ]]; then
     . "$GVM_ROOT/scripts/env/gvm"
 
     # if we don't run this, we won't get a go
-    gvm use go1.19.5 >> /dev/null
+    gvm use go1.21.3 >> /dev/null
 fi
 
 GOPATH=$HOME/projects/go
