@@ -47,3 +47,6 @@ stmpl:ext:stmpl
 
 --type-set
 markdown:ext:md,mkd,mdx
+
+--type-set
+vue:ext:vue
