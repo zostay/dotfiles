@@ -7,13 +7,10 @@ if [[ -f $HOME/.gvm/scripts/gvm ]]; then
     GVM_ROOT=$HOME/.gvm
     export GVM_VERSION=$(cat "$GVM_ROOT/VERSION")
     . "$GVM_ROOT/scripts/env/gvm"
-
-    # if we don't run this, we won't get a go
-    gvm use go1.21.3 >> /dev/null
 fi
 
-GOPATH=$HOME/projects/go
-GOBIN=$GOPATH/bin
+export GOPATH=$HOME/projects/go
+export GOBIN=$GOPATH/bin
 mkdir -p $GOPATH/src
 
 __prepend_paths "$GOBIN"

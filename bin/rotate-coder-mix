@@ -7,7 +7,7 @@ import sys
 #import pprint
 
 # Configuration goes here
-auth_file = expanduser("~/.rotate-coder-mix-headers_auth.json")
+auth_file = expanduser("~/.ytmusic-api-oauth.json")
 
 # My play list IDs
 
@@ -28,16 +28,6 @@ regular_tracks = lambda t: t["likeStatus"] != "LIKE"
 best_tracks = lambda t: t["likeStatus"] == "LIKE"
 
 #pp = pprint.PrettyPrinter()
-
-# Perform initial setup. This is a bit ugly.
-def setup_ytmusic():
-    print("To perform setup do the following:")
-    print(" 0. Open a new tab in the browser.")
-    print(" 1. Open the developer tools Network tab.")
-    print(" 2. Go to https://music.youtube.com/")
-    print(" 3. Find a POST and copy the Request headers starting with Accept.")
-    print(" 4. Paste them below.")
-    YTMusic.setup(filepath=auth_file)
 
 def rotate_ytmusic():
     ytmusic = YTMusic(auth_file)
@@ -118,17 +108,10 @@ def pull_tracks(tracks, regular, best):
     return r, b, v
 
 def main():
-    argp = argparse.ArgumentParser()
-    argp.add_argument("--setup", help = "Setup authentication", action = "store_true")
-    args = argp.parse_args()
-
     try:
-        if args.setup:
-            setup_ytmusic()
-        else:
-            rotate_ytmusic()
+        rotate_ytmusic()
     except:
-        print("You probably need to login. Use the --setup option.")
+        print("You probably need to login. Run: ytmusicapi oauth")
         e = sys.exc_info()[1]
         print(e)
 

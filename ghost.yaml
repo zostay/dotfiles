@@ -23,6 +23,26 @@ keepers:
         secret: Keepass Master Password
         field: password
 
+  empty:
+    type: memory
+
+  local-local:
+    type: keepass
+    path: ~/.zostay.kdbx
+    master_password: 
+      __SECRET__:
+        keeper: pinentry
+        secret: Keepass Master Password
+        field: password
+
+  # ghost sync lastpass-robot local
+  lastpass-robot:
+    type: router
+    default: empty
+    routes:
+      - locations: [ Robot ]
+        keeper: lastpass
+
   lastpass:
     type: lastpass
     username: sterling@hanenkamp.com

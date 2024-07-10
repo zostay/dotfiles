@@ -1,0 +1,3 @@
+#!/bin/zsh
+
+ytmusicapi oauth --file ~/.ytmusic-api-oauth.json

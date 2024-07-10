@@ -7,6 +7,6 @@ if [[ -z "$HOMEBREW_PREFIX" ]]; then
     fi
 fi
 
-if hash brew 2>/dev/null; then
-    export HOMEBREW_GITHUB_API_TOKEN=$(ghost get --name HOMEBREW_GITHUB_API_TOKEN --show-password -o password)
-fi
+# if hash brew 2>/dev/null; then
+#     export HOMEBREW_GITHUB_API_TOKEN=$(ghost get --name HOMEBREW_GITHUB_API_TOKEN --show-password -o password)
+# fi

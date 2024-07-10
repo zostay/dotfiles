@@ -17,4 +17,7 @@ for p in $post_paths; do
     __append_paths "$p"
 done
 
+# temporary paths for bootstrap
+path+=(/opt/homebrew/bin)
+
 # vim: ft=zsh
