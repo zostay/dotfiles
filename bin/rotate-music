@@ -2,26 +2,36 @@
 
 from ytmusicapi import YTMusic
 from os.path import expanduser
-import argparse
+import yaml
 import sys
 #import pprint
 
-# Configuration goes here
-auth_file = expanduser("~/.ytmusic-api-oauth.json")
+# Rotate Music Configuration goes here
+config_file = expanduser("~/.rotate-music.yaml")
 
-# My play list IDs
+if len(sys.argv) != 2:
+    print("Usage:",sys.argv[0],"<rotation>")
+    sys.exit(1)
 
-# REAL
-coder_mix_id = "PLj5I5pH5n-mV5O3FaXg34I5p85XOwrZiW"
-rotation_id = "PLj5I5pH5n-mWh0842nIE6mnYAGfNtUBcG"
+rotation_name = sys.argv[1]
 
-# TEST
-# coder_mix_id = "PLj5I5pH5n-mU3O6M7PaVJUnQPl3SvoEXp"
-# rotation_id = "PLj5I5pH5n-mXB1gDis7_gkJHtsNm1juzG"
+# Load configuration file
+with open(config_file, 'r') as cfg_file:
+    cfg = yaml.safe_load(cfg_file)
 
-# How many songs to rotate
-regular_rotate = 8
-best_rotate = 2
+if cfg["rotations"][rotation_name] is None:
+    print("Rotation",rotation_name,"not found in configuration file.")
+    sys.exit(1)
+
+auth_file = expanduser(cfg["auth_file"])
+defaults = cfg.get("defaults", {})
+rotation = cfg["rotations"][rotation_name]
+playlist_id = rotation["playlist"]
+rotation_id = rotation["rotation"]
+
+regular_rotate = defaults.get("regular_rotate", 8) if rotation.get("regular_rotate") is None else rotation["regular_rotate"]
+best_rotate = defaults.get("best_rotate", 2) if rotation.get("best_rotate") is None else rotation["best_rotate"]
+playlist_max = defaults.get("playlist_max", 200) if rotation.get("playlist_max") is None else rotation["playlist_max"]
 
 # Predicates for matching tracks
 regular_tracks = lambda t: t["likeStatus"] != "LIKE"
@@ -31,10 +41,10 @@ best_tracks = lambda t: t["likeStatus"] == "LIKE"
 
 def rotate_ytmusic():
     ytmusic = YTMusic(auth_file)
-    coder_mix = ytmusic.get_playlist(coder_mix_id, 1000)
-    coder_mix_rotation = ytmusic.get_playlist(rotation_id, 10000)
+    playlist_songs = ytmusic.get_playlist(playlist_id, 1000)
+    rotation_songs = ytmusic.get_playlist(rotation_id, 10000)
 
-    regular_needs_rotate = regular_rotate + coder_mix["trackCount"] - 200
+    regular_needs_rotate = regular_rotate + playlist_songs["trackCount"] - playlist_max
     best_needs_rotate = best_rotate
 
     regular_needs_replacement = regular_rotate
@@ -42,7 +52,7 @@ def rotate_ytmusic():
 
     #pp.pprint(coder_mix["tracks"])
     outgoing_regular, outgoing_best, outgoing = pull_tracks(
-            coder_mix["tracks"], 
+            playlist_songs["tracks"],
             regular_needs_rotate, 
             best_needs_rotate)
 
@@ -52,12 +62,12 @@ def rotate_ytmusic():
     if len(outgoing) > 0:
         ytmusic.add_playlist_items(rotation_id, outgoing, duplicates = True)
     if len(outgoing_regular) > 0:
-        ytmusic.remove_playlist_items(coder_mix_id, outgoing_regular)
+        ytmusic.remove_playlist_items(playlist_id, outgoing_regular)
     if len(outgoing_best) > 0:
-        ytmusic.remove_playlist_items(coder_mix_id, outgoing_best)
+        ytmusic.remove_playlist_items(playlist_id, outgoing_best)
 
     incoming_regular, incoming_best, incoming = pull_tracks(
-            coder_mix_rotation["tracks"],
+            rotation_songs["tracks"],
             regular_needs_replacement,
             best_needs_replacement)
 
@@ -65,7 +75,7 @@ def rotate_ytmusic():
     display_tracks(incoming_regular, incoming_best)
 
     if len(incoming) > 0:
-        ytmusic.add_playlist_items(coder_mix_id, incoming, duplicates = True)
+        ytmusic.add_playlist_items(playlist_id, incoming, duplicates = True)
     if len(incoming_regular) > 0:
         ytmusic.remove_playlist_items(rotation_id, incoming_regular)
     if len(incoming_best) > 0:
@@ -82,7 +92,7 @@ def every_other_one(tracks, n, pred):
                 needsSkip = False
             i += 1
 
-        while not pred(tracks[i]) and i < len(tracks):
+        while i < len(tracks) and not pred(tracks[i]):
             i += 1
 
         # stop early if we reach the end early
@@ -92,6 +102,7 @@ def every_other_one(tracks, n, pred):
         matches.append(tracks[i])
 
         needsSkip = True
+        i += 1
     return matches
 
 def display_tracks(regular, best):

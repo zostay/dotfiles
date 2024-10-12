@@ -28,17 +28,17 @@ else
     exit 1
 fi
 
-if hash lpass 2> /dev/null && [[ -z "$LPASS_USERNAME" ]]; then
-    echo You must put the following line into .zshrc.local: >&2
-    echo >&2
-    echo export LPASS_USERNAME=email@address >&2
-    echo >&2
-    echo and then >&2
-    echo >&2
-    echo source ~/.zshrc.local >&2
-    echo >&2
-    exit 1
-fi
+#if hash lpass 2> /dev/null && [[ -z "$LPASS_USERNAME" ]]; then
+#    echo You must put the following line into .zshrc.local: >&2
+#    echo >&2
+#    echo export LPASS_USERNAME=email@address >&2
+#    echo >&2
+#    echo and then >&2
+#    echo >&2
+#    echo source ~/.zshrc.local >&2
+#    echo >&2
+#    exit 1
+#fi
 
 bin/check-dotfiles-environment || exit 1
 
@@ -60,7 +60,9 @@ if (( ! $SKIP_COMPLETIONS )); then
 
             cmd="$(basename "$cmd")"
 
+            [[ "$cmd" = "cfssljson" ]] && continue
             [[ "$cmd" = "iferr" ]] && continue
+            [[ "$cmd" = example-* ]] && continue
             [[ "$cmd" = "forward-file" ]] && continue
             [[ "$cmd" = "gosec" ]] && continue
             [[ "$cmd" = "gotags" ]] && continue
@@ -71,7 +73,10 @@ if (( ! $SKIP_COMPLETIONS )); then
             [[ "$cmd" = "label-message" ]] && continue
             [[ "$cmd" = "nasapod" ]] && continue
             [[ "$cmd" = "protoc-gen-apigw" ]] && continue
+            [[ "$cmd" = "protoc-gen-openapiv2" ]] && continue
+            [[ "$cmd" = "protoc-gen-swagger" ]] && continue
             [[ "$cmd" = "sqlboiler-"* ]] && continue
+            [[ "$cmd" = "worker" ]] && continue
             [[ "$cmd" = "zap-cli" ]] && continue
 
             setup-completion "$cmd"
@@ -123,3 +128,5 @@ link-file repl.rc ~/.re.pl/repl.rc
 link-file XCompose ~/.XCompose
 
 tmpl-link-file minikube/offlineimap.yaml ~/.zostay-minikube/offlineimap.yaml
+
+link-file rotate-music.yaml ~/.rotate-music.yaml

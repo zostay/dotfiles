@@ -1,0 +1,20 @@
+---
+auth_file: ~/.ytmusic-api-oauth.json
+
+defaults:
+  regular_rotate: 8
+  best_rotate: 2
+  playlist_max: 200
+
+rotations:
+  coder-mix:
+    playlist: "PLj5I5pH5n-mV5O3FaXg34I5p85XOwrZiW"
+    rotation: "PLj5I5pH5n-mWh0842nIE6mnYAGfNtUBcG"
+
+  test-mix:
+    playlist: "PLj5I5pH5n-mU3O6M7PaVJUnQPl3SvoEXp"
+    rotation: "PLj5I5pH5n-mXB1gDis7_gkJHtsNm1juzG"
+
+  heavy-rock:
+    playlist: "PLj5I5pH5n-mW6naM9hhVUOtQdSLq0pbQA"
+    rotation: "PLj5I5pH5n-mWf1oH0sg-v1ApsThyehObn"

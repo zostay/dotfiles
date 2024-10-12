@@ -1,0 +1,139 @@
+Scanning completion...
+Scanning zsh...
+=== zsh ===
+{
+  "Broad": {
+    "IntermediateCAs": {
+      "grade": "Skipped"
+    }
+  },
+  "Connectivity": {
+    "CloudFlareStatus": {
+      "grade": "Skipped",
+      "error": "Couldn't parse CIDR range: invalid CIDR address: 131.0.72.0/222400:cb00::/32"
+    },
+    "DNSLookup": {
+      "grade": "Bad",
+      "error": "lookup zsh: no such host"
+    },
+    "TCPDial": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    },
+    "TLSDial": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    }
+  },
+  "PKI": {
+    "ChainExpiration": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    },
+    "ChainValidation": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    },
+    "MultipleCerts": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    }
+  },
+  "TLSHandshake": {
+    "CertsByCiphers": {
+      "grade": "Bad",
+      "error": "no cipher supported"
+    },
+    "CertsBySigAlgs": {
+      "grade": "Bad",
+      "error": "no SigAlgs supported"
+    },
+    "CipherSuite": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    },
+    "ECCurves": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    },
+    "SigAlgs": {
+      "grade": "Bad",
+      "error": "no SigAlgs supported"
+    }
+  },
+  "TLSSession": {
+    "SessionResume": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup zsh: no such host"
+    }
+  }
+}
+
+=== completion ===
+{
+  "Broad": {
+    "IntermediateCAs": {
+      "grade": "Skipped"
+    }
+  },
+  "Connectivity": {
+    "CloudFlareStatus": {
+      "grade": "Skipped",
+      "error": "Couldn't parse CIDR range: invalid CIDR address: 131.0.72.0/222400:cb00::/32"
+    },
+    "DNSLookup": {
+      "grade": "Bad",
+      "error": "lookup completion: no such host"
+    },
+    "TCPDial": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    },
+    "TLSDial": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    }
+  },
+  "PKI": {
+    "ChainExpiration": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    },
+    "ChainValidation": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    },
+    "MultipleCerts": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    }
+  },
+  "TLSHandshake": {
+    "CertsByCiphers": {
+      "grade": "Bad",
+      "error": "no cipher supported"
+    },
+    "CertsBySigAlgs": {
+      "grade": "Bad",
+      "error": "no SigAlgs supported"
+    },
+    "CipherSuite": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    },
+    "ECCurves": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    },
+    "SigAlgs": {
+      "grade": "Bad",
+      "error": "no SigAlgs supported"
+    }
+  },
+  "TLSSession": {
+    "SessionResume": {
+      "grade": "Bad",
+      "error": "dial tcp: lookup completion: no such host"
+    }
+  }
+}
