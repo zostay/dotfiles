@@ -2,6 +2,7 @@
 
 --ignore-dir=.git
 --ignore-dir=.idea
+--ignore-dir=vendor
 --type-add=yaml=.conf
 --ignore-dir=target
 --ignore-dir=.build
