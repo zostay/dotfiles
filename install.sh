@@ -61,6 +61,7 @@ if (( ! $SKIP_COMPLETIONS )); then
             cmd="$(basename "$cmd")"
 
             [[ "$cmd" = "cfssljson" ]] && continue
+            [[ "$cmd" = "cfssl-scan" ]] && continue
             [[ "$cmd" = "iferr" ]] && continue
             [[ "$cmd" = example-* ]] && continue
             [[ "$cmd" = "forward-file" ]] && continue
