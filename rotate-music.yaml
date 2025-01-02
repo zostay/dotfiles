@@ -1,5 +1,5 @@
 ---
-auth_file: ~/.ytmusic-api-oauth.json
+auth_file: ~/.ytmusicapi-browser.json
 
 defaults:
   regular_rotate: 8

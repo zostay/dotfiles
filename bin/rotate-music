@@ -40,9 +40,23 @@ best_tracks = lambda t: t["likeStatus"] == "LIKE"
 #pp = pprint.PrettyPrinter()
 
 def rotate_ytmusic():
-    ytmusic = YTMusic(auth_file)
-    playlist_songs = ytmusic.get_playlist(playlist_id, 1000)
-    rotation_songs = ytmusic.get_playlist(rotation_id, 10000)
+    try:
+        ytmusic = YTMusic(auth_file)
+    except:
+        print("Failed to connect to the YouTube API")
+        raise
+
+    try:
+        playlist_songs = ytmusic.get_playlist(playlist_id, 1000)
+    except:
+        print(f"Failed to fetch primary playlist: {playlist_id}")
+        raise
+
+    try:
+        rotation_songs = ytmusic.get_playlist(rotation_id, 10000)
+    except:
+        print(f"failed to fetch rotation playlist: {rotation_id}")
+        raise
 
     regular_needs_rotate = regular_rotate + playlist_songs["trackCount"] - playlist_max
     best_needs_rotate = best_rotate
@@ -60,11 +74,23 @@ def rotate_ytmusic():
     display_tracks(outgoing_regular, outgoing_best)
 
     if len(outgoing) > 0:
-        ytmusic.add_playlist_items(rotation_id, outgoing, duplicates = True)
+        try:
+            ytmusic.add_playlist_items(rotation_id, outgoing, duplicates = True)
+        except:
+            print("Failed to add tracks to rotation playlist.")
+            raise
     if len(outgoing_regular) > 0:
-        ytmusic.remove_playlist_items(playlist_id, outgoing_regular)
+        try:
+            ytmusic.remove_playlist_items(playlist_id, outgoing_regular)
+        except:
+            print("Failed to remove regular tracks from primary playlist.")
+            raise
     if len(outgoing_best) > 0:
-        ytmusic.remove_playlist_items(playlist_id, outgoing_best)
+        try:
+            ytmusic.remove_playlist_items(playlist_id, outgoing_best)
+        except:
+            print("Failed to remove favorited track from primary playlist.")
+            raise
 
     incoming_regular, incoming_best, incoming = pull_tracks(
             rotation_songs["tracks"],
@@ -75,11 +101,23 @@ def rotate_ytmusic():
     display_tracks(incoming_regular, incoming_best)
 
     if len(incoming) > 0:
-        ytmusic.add_playlist_items(playlist_id, incoming, duplicates = True)
+        try:
+            ytmusic.add_playlist_items(playlist_id, incoming, duplicates = True)
+        except:
+            print("Failed to add tracks to the playlist from the rotation.")
+            raise
     if len(incoming_regular) > 0:
-        ytmusic.remove_playlist_items(rotation_id, incoming_regular)
+        try:
+            ytmusic.remove_playlist_items(rotation_id, incoming_regular)
+        except:
+            print("Failed to remove regular tracks from the rotation playlist.")
+            raise
     if len(incoming_best) > 0:
-        ytmusic.remove_playlist_items(rotation_id, incoming_best)
+        try:
+            ytmusic.remove_playlist_items(rotation_id, incoming_best)
+        except:
+            print("Failed to remove favorited tracks from the reotation playlist.")
+            raise
 
 # Pulls every other song matching the predicate from the track list.
 def every_other_one(tracks, n, pred):
@@ -125,6 +163,7 @@ def main():
         print("You probably need to login. Run: ytmusicapi oauth")
         e = sys.exc_info()[1]
         print(e)
+        raise
 
 if __name__ == "__main__":
     main()
