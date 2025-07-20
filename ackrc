@@ -8,6 +8,7 @@
 --ignore-dir=.build
 --ignore-dir=.piolibdeps
 --ignore-dir=.pio
+--ignore-dir=dist
 --ignore-dir=compiled_templates
 --ignore-file=is:jquery.js
 --ignore-file=is:jquery-ui.js
