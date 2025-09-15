@@ -1,5 +1,6 @@
 ---
-auth_file: ~/.ytmusicapi-browser.json
+auth_file: ~/.rotate-music-auth-cache.json
+credentials_file: ~/.rotate-music-client-credentials.local.json
 
 defaults:
   regular_rotate: 8

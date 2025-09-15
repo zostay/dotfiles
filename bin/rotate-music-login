@@ -1,0 +1,106 @@
+#!/usr/bin/env perl
+
+use v5.38;
+use warnings FATAL => 'all';
+use FileHandle;
+use JSON;
+use YAML;
+
+use constant SEARCH => 1;
+use constant HEADER => 2;
+use constant CONTINUATION => 3;
+
+my $config_file = "$ENV{HOME}/.rotate-music.yaml";
+my $config = YAML::LoadFile($config_file);
+my $auth_file = $config->{auth_file};
+$auth_file =~ s/^~/$ENV{HOME}/;
+
+say <<'STARTUP_MESSAGE';
+Login to YouTube Music:
+
+Please visit the following URL to authenticate with YouTube Music
+
+    https://music.youtube.com
+
+After you have authenticated, press F12 to open the developer console.
+Filter for 'browse' and right click on the first entry and select
+'Copy > Copy as cURL'.
+
+Then return to this terminal and press ENTER.
+STARTUP_MESSAGE
+
+my $input = <STDIN>;
+
+open my $paste, '-|', '/usr/bin/pbpaste'
+    or die "Failed to open pipe from pbpaste: $!";
+my $curl = do { local $/; <$paste> };
+close $paste
+    or die "Failed to close pipe from pbpaste: $!";
+
+my @words = split /\s+/, $curl;
+my @headers;
+my $mode = SEARCH;
+my $prefix = '';
+for my $word (@words) {
+    if ($mode == SEARCH) {
+        if ($word eq '-H') {
+            $mode = HEADER;
+        }
+        elsif ($word eq '-b') {
+            $mode = HEADER;
+            $prefix = 'cookie: ';
+        }
+    }
+    elsif ($mode == HEADER) {
+        my $sq = $word =~ s/^'//;
+        my $eq = $word =~ s/'$//;
+
+        push @headers, $prefix.$word;
+        if ($sq && $eq) {
+            $mode = SEARCH;
+        }
+        elsif ($sq) {
+            $mode = CONTINUATION;
+        }
+        else {
+            $mode = SEARCH;
+        }
+
+        $prefix = '';
+    }
+    elsif ($mode == CONTINUATION) {
+        if ($word =~ s/'$//) {
+            $headers[-1] .= " $word";
+            $mode = SEARCH;
+        }
+        else {
+            $headers[-1] .= " $word";
+        }
+    }
+    else {
+        die "I broke my program.";
+    }
+}
+
+my %header_map;
+for my $header (@headers) {
+    if ($header =~ /^([^:]+):\s*(.*)$/) {
+        my ($key, $value) = (lc($1), $2);
+        if (exists $header_map{$key}) {
+            $header_map{$key} .= "; $value";
+        }
+        else {
+            $header_map{$key} = $value;
+        }
+    }
+    else {
+        die "Invalid header: $header";
+    }
+}
+
+say "Writing headers to $auth_file";
+
+open my $authfh, '>', $auth_file
+    or die "Failed to open $auth_file: $!";
+print $authfh to_json(\%header_map);
+close $authfh or die "Failed to write $auth_file: $!";
