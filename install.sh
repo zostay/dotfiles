@@ -15,6 +15,9 @@ shift $OPTIND-1
 
 . ./functions.sh
 
+echo "Initializing git submodules."
+git submodule update --init --recursive
+
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:=$HOME/.config}
 
 if [[ -n $* ]]; then
@@ -91,8 +94,6 @@ link-file bin ~/bin
 
 link-file ackrc ~/.ackrc
 tmpl-link-file tmux.conf ~/.tmux.conf
-
-link-file ghost.yaml ~/.ghost.yaml
 
 link-file colorist ~/.colorist
 

@@ -19,10 +19,7 @@ oses:
       reattach_to_user_namespace: 1
 
 environments:
-  '*':
-    muttrc:
-      ziprecruiter_email:
-        __SECRET__: GIT_EMAIL_ZIPRECRUITER
+  '*': {}
   home:
     "minikube/offlineimap.yaml":
       email:
@@ -46,6 +43,31 @@ environments:
       auth_type: netrc
     signature:
       line1: https://sterling.hanenkamp.com/stfl/
+    vimrc:
+      tabstop: 4
+  fullstack:
+    "minikube/offlineimap.yaml":
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+    gitconfig:
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+    msmtprc:
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+    muttrc:
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+    offlineimap.sh:
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+      minikube: ""
+    offlineimaprc:
+      email:
+        __SECRET__: GIT_EMAIL_FULLSTACK
+      auth_type: netrc
+    signature:
+      line1: Founding Engineer
     vimrc:
       tabstop: 4
   solo.io:

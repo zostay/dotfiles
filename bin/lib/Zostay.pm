@@ -98,14 +98,14 @@ sub dotfiles_environment {
 
 sub get_secret($) {
     my $name = shift;
-    open my $fh, "-|", "ghost", "get", "--name", $name, "-o", "password", "--show-password",
-        or die "failed to start ghost get --name $name (make sure it is installed): $!\n";
+    open my $fh, "-|", "op", "read", "op://Robots/$name/password"
+        or die "failed to start op read op://Robots/$name/password (make sure it is installed): $!\n";
 
     my $secret = do { local $/; <$fh> };
     chomp $secret;
 
     close $fh
-        or die "failed to run ghost get --name $name ($?): $!\n";
+        or die "failed to run op read op://Robots/$name/password ($?): $!\n";
 
     return $secret
 }

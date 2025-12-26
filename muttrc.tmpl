@@ -22,7 +22,7 @@ set keywords_standard = yes
 set sendmail          = "/usr/local/bin/msmtp"
 set signature         = .signature
 
-alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^[% $ziprecruiter_email %]$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
+alternates '^sterling@hanenkamp\.com$' '^hanenkamp@cpan\.org$' '^hanenkamp@gmail.com$' '^zostay@hanenkamp\.com$' '@qubling\.com$' '@zostay\.com$'
 
 mailboxes `find ~/Mail -maxdepth 1 -type d | cut -d/ -f 5 | sed '1d;s/^/+/'`
 
