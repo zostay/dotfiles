@@ -1,3 +1,9 @@
+. "$HOME/.zsh/functions/paths"
+
+if [[ -x "$HOME/.local/bin/claude" ]]; then
+    __prepend_paths "$HOME/.local/bin/claude"
+fi
+
 alias claude-home="CLAUDE_CONFIG_DIR=~/.claude-home claude"
 
 # vim: ft=zsh
