@@ -1,5 +1,27 @@
 #!/bin/zsh
 
+# Parse command line options
+WORKTREE_MODE=0
+BRANCH_NAME=""
+
+while getopts "w:b:" opt; do
+    case $opt in
+        w)
+            WORKTREE_MODE=1
+            WORKTREE_FOLDER="$OPTARG"
+            ;;
+        b)
+            BRANCH_NAME="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
 NAME=$1
 DIR=$2
 
