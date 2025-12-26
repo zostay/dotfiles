@@ -4,7 +4,7 @@
 
 PATH="$PWD/bin:$PATH"
 SKIP_COMPLETIONS=0
-while getopts "s" opt; do
+while getopts "c" opt; do
     case $opt in
         c)
             SKIP_COMPLETIONS=1
@@ -65,6 +65,7 @@ if (( ! $SKIP_COMPLETIONS )); then
 
             [[ "$cmd" = "cfssljson" ]] && continue
             [[ "$cmd" = "cfssl-scan" ]] && continue
+            [[ "$cmd" = "client" ]] && continue
             [[ "$cmd" = "iferr" ]] && continue
             [[ "$cmd" = example-* ]] && continue
             [[ "$cmd" = "forward-file" ]] && continue
@@ -79,6 +80,7 @@ if (( ! $SKIP_COMPLETIONS )); then
             [[ "$cmd" = "protoc-gen-apigw" ]] && continue
             [[ "$cmd" = "protoc-gen-openapiv2" ]] && continue
             [[ "$cmd" = "protoc-gen-swagger" ]] && continue
+            [[ "$cmd" = "server" ]] && continue
             [[ "$cmd" = "sqlboiler-"* ]] && continue
             [[ "$cmd" = "worker" ]] && continue
             [[ "$cmd" = "zap-cli" ]] && continue
