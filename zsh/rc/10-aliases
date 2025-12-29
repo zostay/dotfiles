@@ -17,5 +17,6 @@ alias grep='grep --color=auto'
 alias unscram='perl -wle "print qq|\cO|"'
 alias irc='autossh -n irssi qubling'
 
+alias k=kubectl
 
 # vim: ft=zsh

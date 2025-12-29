@@ -4,7 +4,8 @@ if [ `cat $HOME/.dotfile-environment` = 'home' ]; then
 
     export SAFEPLACE=yep
 
-    alias k=kubectl
+    alias kq="kubectl --context sterling-cluster3.qubling.cloud"
+    alias k4="kubectl --context main-cluster"
 fi
 
 # vim: ft=zsh

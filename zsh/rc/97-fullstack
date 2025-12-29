@@ -1,5 +1,9 @@
-alias kdev="kubectl --context=kind-erp"
-alias kprod="kubectl --context=sterling-segdy.com"
-alias kerp="kubectl --context=erpdy-cluster"
+if [ "$(cat $HOME/.dotfile-environment)" = 'fullstack' ]; then
+    alias kdev="kubectl --context=kind-erp"
+    alias kprod="kubectl --context=sterling-segdy.com"
+    alias kerp="kubectl --context=erpdy-cluster"
 
-export GOOGLE_CLOUD_PROJECT="interpret-erp"
+    export GOOGLE_CLOUD_PROJECT="interpret-erp"
+fi
+
+# vim: ft=zsh
