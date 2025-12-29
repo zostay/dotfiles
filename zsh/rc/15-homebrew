@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+. "$HOME/.zsh/functions/paths"
+
 # should probably run in .zprofile, but if not...
 if [[ -z "$HOMEBREW_PREFIX" ]]; then
     if [[ -x "/opt/homebrew/bin/brew" ]]; then
@@ -7,6 +9,7 @@ if [[ -z "$HOMEBREW_PREFIX" ]]; then
     fi
 fi
 
-# if hash brew 2>/dev/null; then
+if hash brew 2>/dev/null; then
+    __prepend_paths "/opt/homebrew/bin"
 #     export HOMEBREW_GITHUB_API_TOKEN=$(ghost get --name HOMEBREW_GITHUB_API_TOKEN --show-password -o password)
-# fi
+fi

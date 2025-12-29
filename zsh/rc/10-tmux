@@ -9,3 +9,5 @@ if ! tmux has-session -t stuff &> /dev/null; then
     tmux new-window -n edit -t "stuff:" "$HOME/bin/resize-window-fix; vim"
     tmux select-window -t "stuff:0"
 fi
+
+# vim: ft=zsh
