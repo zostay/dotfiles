@@ -3,5 +3,4 @@
 lib/.precomp
 .DS_Store
 .session.vim
-.claude
 *.local.*
