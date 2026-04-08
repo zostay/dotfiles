@@ -4,3 +4,4 @@ lib/.precomp
 .DS_Store
 .session.vim
 *.local.*
+core
