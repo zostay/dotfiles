@@ -1,0 +1,11 @@
+#!/bin/zsh
+
+SESSION_NAME="$1"
+SESSION_DIR="$2"
+
+if [[ -z "$SESSION_DIR" ]]; then
+    SESSION_DIR="$PWD"
+fi
+
+tmux split-window -h -t "$SESSION_NAME:0" -c "$SESSION_DIR" "claude"
+tmux select-pane -t "$SESSION_NAME:0.0"

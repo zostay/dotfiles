@@ -3,8 +3,9 @@
 # Parse command line options
 WORKTREE_MODE=0
 BRANCH_NAME=""
+EDITOR_MODE=0
 
-while getopts "w:b:" opt; do
+while getopts "w:b:e" opt; do
     case $opt in
         w)
             WORKTREE_MODE=1
@@ -12,6 +13,9 @@ while getopts "w:b:" opt; do
             ;;
         b)
             BRANCH_NAME="$OPTARG"
+            ;;
+        e)
+            EDITOR_MODE=1
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -30,7 +34,11 @@ function initialize_session {
     SESSION_DIR="$2"
     SHORT_DIR=$( basename $( dirname "$SESSION_DIR" ) )
 
-    add-editor "$SESSION_NAME" "$SESSION_DIR"
+    add-claude "$SESSION_NAME" "$SESSION_DIR"
+
+    if (( $EDITOR_MODE )); then
+        add-editor "$SESSION_NAME" "$SESSION_DIR"
+    fi
 
     case $SHORT_DIR in
         raku)
