@@ -1,0 +1,76 @@
+#!/bin/zsh
+
+# work-supervisor: keep a pane alive after the wrapped command exits.
+#
+# Runs the chosen command; when it exits, presents an in-pane menu to
+# relaunch claude / codex / a shell, or close the pane.
+
+emulate -L zsh
+setopt no_unset
+
+DEFAULT=claude
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --default=*) DEFAULT="${1#--default=}"; shift ;;
+        --default)   DEFAULT="$2"; shift 2 ;;
+        --) shift; break ;;
+        *)  echo "work-supervisor: unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+
+next="$DEFAULT"
+
+run_choice() {
+    case $1 in
+        claude) claude ;;
+        codex)  codex ;;
+        shell|zsh) ${SHELL:-zsh} -l ;;
+        *) return 1 ;;
+    esac
+}
+
+label_for() {
+    case $1 in
+        claude) echo "Claude" ;;
+        codex)  echo "Codex" ;;
+        shell|zsh) echo "shell" ;;
+        *) echo "$1" ;;
+    esac
+}
+
+while true; do
+    run_choice "$next"
+
+    print
+    print -P "%F{244}── $(label_for "$next") exited ──%f"
+    print "  [c] claude     (default)"
+    print "  [o] codex"
+    print "  [s] shell"
+    print "  [x] close pane"
+    print -n "> "
+
+    # Single-key read; Enter accepts default.
+    if ! read -k 1 choice; then
+        # stdin closed (pane killed underneath us) — give up cleanly.
+        exit 0
+    fi
+    print
+
+    case $choice in
+        c|C)        next=claude ;;
+        o|O)        next=codex ;;
+        s|S)        next=shell ;;
+        x|X)
+            # End the whole work session — shell, claude, and recon panes
+            # all go together. Target the pane explicitly so we don't depend
+            # on which session tmux considers "current".
+            if [[ -n "$TMUX_PANE" ]]; then
+                session=$(tmux display-message -p -t "$TMUX_PANE" '#S')
+                exec tmux kill-session -t "=$session"
+            fi
+            exit 0
+            ;;
+        $'\n'|"")   next=claude ;;
+        *)          next="$DEFAULT" ;;
+    esac
+done

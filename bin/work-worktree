@@ -1,0 +1,50 @@
+#!/bin/zsh
+
+# work-worktree PROJECT_DIR WORK_NAME
+#
+# Resolve (and create if needed) the directory for a work session.
+#
+#   WORK_NAME=prime           → echo PROJECT_DIR (no worktree)
+#   WORK_NAME=<other>         → ensure git worktree at
+#                                $(dirname PROJECT_DIR)/$(basename PROJECT_DIR)-worktrees/<work>
+#                                on branch <work> (created from HEAD if missing)
+#                                and echo that path.
+#
+# Errors (non-zero exit) if PROJECT_DIR isn't a git working tree when a
+# real worktree is requested.
+
+emulate -L zsh
+setopt no_unset pipefail
+
+project="${1:?usage: work-worktree PROJECT_DIR WORK_NAME}"
+work="${2:?usage: work-worktree PROJECT_DIR WORK_NAME}"
+
+if [[ "$work" == "prime" ]]; then
+    print -r -- "$project"
+    exit 0
+fi
+
+if [[ ! -d "$project/.git" && -z "$(git -C "$project" rev-parse --git-dir 2>/dev/null)" ]]; then
+    print -u2 "work-worktree: $project is not a git working tree (needed for -w $work)"
+    exit 1
+fi
+
+parent="$(dirname -- "$project")"
+base="$(basename -- "$project")"
+target="$parent/${base}-worktrees/$work"
+
+if [[ -d "$target" ]]; then
+    print -r -- "$target"
+    exit 0
+fi
+
+mkdir -p -- "$parent/${base}-worktrees"
+
+# If the branch already exists (locally), check it out; otherwise create.
+if git -C "$project" show-ref --verify --quiet "refs/heads/$work"; then
+    git -C "$project" worktree add "$target" "$work" >&2 || exit 1
+else
+    git -C "$project" worktree add -b "$work" "$target" >&2 || exit 1
+fi
+
+print -r -- "$target"

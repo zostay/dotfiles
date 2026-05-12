@@ -13,9 +13,11 @@ set -g set-titles-string "#{session_name}"
 set -g default-terminal "xterm-256color"
 set-option -ga terminal-overrides ",xterm-256color:Tc"
 
-set -g status-right "#(uptime|awk '{print $11}') #(date)"
-set -g status-left "[#{session_name}] "
-set -g status-left-length 20
+set -g status-justify left
+set -g status-right "#(uptime|awk '{print $11}') #(date +%H:%M)"
+set -g status-left "#(work-status #{client_session}) "
+set -g status-left-length 200
+set -g status-interval 2
 
 set -s escape-time 0
 
@@ -52,3 +54,26 @@ bind C-L resize-pane -R 5
 bind C-M resize-pane -M
 
 bind C-f last-window
+
+# --- session "tab bar" interactions --------------------------------------
+# Click a session label in the status line to switch to it. `work-status`
+# emits the session's 0-based index as the range identifier (tmux caps
+# user-range identifiers at 15 chars, so we can't use the session name);
+# `work-switch` resolves the index back to a name.
+bind -n MouseDown1Status run-shell "work-switch #{mouse_status_range}"
+
+# Alt-Left / Alt-Right cycle sessions (the new "tabs"). No prefix needed.
+# These shadow zsh's backward-word/forward-word at the command line — use
+# Alt-b / Alt-f or vi-mode if you need word jumping inside zsh.
+bind -n M-Left  switch-client -p
+bind -n M-Right switch-client -n
+
+# --- recon integration ---------------------------------------------------
+bind g display-popup -E -w 80% -h 60% recon
+bind i run-shell "recon next"
+bind W command-prompt -p "workon:" "run-shell 'workon %1'"
+bind X confirm-before -p "kill #S? (y/n)" kill-session
+
+# Tear the tmux server down once the last session closes so the next workon
+# cold-starts cleanly.
+set-hook -g session-closed 'run-shell "tmux ls >/dev/null 2>&1 || tmux kill-server"'

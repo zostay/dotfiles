@@ -1,0 +1,28 @@
+#!/bin/zsh
+
+# work-status: emit a tmux status-line fragment listing every live session.
+# Highlights the current one (passed as $1, normally #{client_session}) and
+# wraps each entry in a #[range=user|<name>] span so clicks can switch.
+
+emulate -L zsh
+
+current="${1:-}"
+
+sessions=( ${(f)"$(tmux ls -F '#{session_name}' 2>/dev/null)"} )
+
+# tmux truncates the user-range identifier to 15 chars, so we use the
+# session's 0-based index instead and look the name back up in
+# `work-switch` when a click fires.
+out=""
+i=0
+for s in $sessions; do
+    if [[ "$s" == "$current" ]]; then
+        out+="#[range=user|${i},fg=colour234,bg=colour123,bold] ${s} #[norange,nobold,fg=default,bg=default]"
+    else
+        out+="#[range=user|${i},fg=white,bg=colour237] ${s} #[norange,fg=default,bg=default]"
+    fi
+    out+=" "
+    (( i++ ))
+done
+
+print -nr -- "$out"

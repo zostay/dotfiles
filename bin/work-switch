@@ -1,0 +1,22 @@
+#!/bin/zsh
+
+# work-switch INDEX
+#
+# Switch the current tmux client to the INDEX-th session (0-based) as
+# listed by `tmux list-sessions`. Exists so the status-line click handler
+# can pass a short integer (tmux truncates user-range identifiers at 15
+# characters) rather than the full session name.
+
+emulate -L zsh
+
+idx="${1:?usage: work-switch INDEX}"
+
+sessions=( ${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"} )
+target="${sessions[$((idx + 1))]:-}"
+
+if [[ -z "$target" ]]; then
+    print -u2 "work-switch: no session at index $idx"
+    exit 1
+fi
+
+tmux switch-client -t "=$target"

@@ -1,18 +1,13 @@
 #!/bin/zsh
 
 # Parse command line options
-WORKTREE_MODE=0
-BRANCH_NAME=""
+WORK_NAME="prime"
 EDITOR_MODE=0
 
-while getopts "w:b:e" opt; do
+while getopts "w:e" opt; do
     case $opt in
         w)
-            WORKTREE_MODE=1
-            WORKTREE_FOLDER="$OPTARG"
-            ;;
-        b)
-            BRANCH_NAME="$OPTARG"
+            WORK_NAME="$OPTARG"
             ;;
         e)
             EDITOR_MODE=1
@@ -83,17 +78,45 @@ fi
 
 NAME="${NAME//\./-}"
 
-if [[ -n "$TMUX" ]] && tmux display-message -p '#S' | grep "^$NAME$" >/dev/null; then
-    echo "This is the [$NAME] session!";
+# Resolve worktree path (no-op for WORK_NAME=prime).
+if ! WORK_DIR=$( work-worktree "$DIR" "$WORK_NAME" ); then
+    exit 1
+fi
+
+# Session name encodes the work; prime stays bare for the most-common case.
+if [[ "$WORK_NAME" == "prime" ]]; then
+    SESSION_NAME="$NAME"
 else
-    if ! tmux has-session -t \="$NAME" &>/dev/null; then
-        tmux new-session -d -c "$DIR" -s "$NAME"
-        initialize_session "$NAME" "$DIR"
+    SESSION_NAME="${NAME}-${WORK_NAME}"
+fi
+
+if [[ -n "$TMUX" ]] && tmux display-message -p '#S' | grep "^$SESSION_NAME$" >/dev/null; then
+    echo "This is the [$SESSION_NAME] session!";
+else
+    if ! tmux has-session -t \="$SESSION_NAME" &>/dev/null; then
+        # Pin the new (detached) session's dimensions to the current client
+        # / terminal so percentage-based splits inside add-claude resolve
+        # against the right canvas. tmux's default-size is 80x24, which
+        # would otherwise distort the layout once a real terminal attaches.
+        if [[ -n "$TMUX" ]]; then
+            cols=$(  tmux display-message -p '#{client_width}'  )
+            lines=$( tmux display-message -p '#{client_height}' )
+        else
+            # `stty size` reads from the controlling tty directly — more
+            # reliable than `tput`, which falls back to 80x24 whenever the
+            # terminfo lookup is ambiguous.
+            sz=( ${(z)"$(stty size 2>/dev/null)"} )
+            lines=${sz[1]:-60}
+            cols=${sz[2]:-200}
+        fi
+        tmux new-session -d -x "$cols" -y "$lines" \
+            -c "$WORK_DIR" -s "$SESSION_NAME" "work-supervisor --default=zsh"
+        initialize_session "$SESSION_NAME" "$WORK_DIR"
     fi
 
     if [[ -n "$TMUX" ]]; then
-        tmux switch-client -t \="$NAME"
+        tmux switch-client -t \="$SESSION_NAME"
     else
-        tmux attach-session -t \="$NAME"
+        tmux attach-session -t \="$SESSION_NAME"
     fi
 fi
