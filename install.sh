@@ -56,6 +56,14 @@ if (( ! $SKIP_COMPLETIONS )); then
     #setup-completion kops
 
     if [[ -n "$GOPATH" && -d "$GOPATH/bin" ]]; then
+        SKIP_PATTERNS=()
+        if [[ -r ./skipped-completions.txt ]]; then
+            while IFS= read -r pattern; do
+                [[ -z "$pattern" || "$pattern" = \#* ]] && continue
+                SKIP_PATTERNS+=("$pattern")
+            done < ./skipped-completions.txt
+        fi
+
         for cmd in "$GOPATH/bin/"*; do
             if [[ ! -x "$cmd" ]]; then
                 continue
@@ -63,27 +71,14 @@ if (( ! $SKIP_COMPLETIONS )); then
 
             cmd="$(basename "$cmd")"
 
-            [[ "$cmd" = "cfssljson" ]] && continue
-            [[ "$cmd" = "cfssl-scan" ]] && continue
-            [[ "$cmd" = "client" ]] && continue
-            [[ "$cmd" = "iferr" ]] && continue
-            [[ "$cmd" = example-* ]] && continue
-            [[ "$cmd" = "forward-file" ]] && continue
-            [[ "$cmd" = "gosec" ]] && continue
-            [[ "$cmd" = "gotags" ]] && continue
-            [[ "$cmd" = "gotestfmt" ]] && continue
-            [[ "$cmd" = "json2yaml" ]] && continue
-            [[ "$cmd" = "kops" ]] && continue
-            [[ "$cmd" = "label-mail" ]] && continue
-            [[ "$cmd" = "label-message" ]] && continue
-            [[ "$cmd" = "nasapod" ]] && continue
-            [[ "$cmd" = "protoc-gen-apigw" ]] && continue
-            [[ "$cmd" = "protoc-gen-openapiv2" ]] && continue
-            [[ "$cmd" = "protoc-gen-swagger" ]] && continue
-            [[ "$cmd" = "server" ]] && continue
-            [[ "$cmd" = "sqlboiler-"* ]] && continue
-            [[ "$cmd" = "worker" ]] && continue
-            [[ "$cmd" = "zap-cli" ]] && continue
+            skip=0
+            for pattern in "${SKIP_PATTERNS[@]}"; do
+                if [[ "$cmd" = ${~pattern} ]]; then
+                    skip=1
+                    break
+                fi
+            done
+            (( skip )) && continue
 
             setup-completion "$cmd"
         done
