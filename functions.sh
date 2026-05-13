@@ -35,22 +35,41 @@ function tmpl-link-file {
 }
 
 function setup-completion {
-    base=$(basename "$1")
+    local base=$(basename "$1")
     echo -n "Setting completion for $base ..."
+    local rc=0
     if [[ -x "$GOPATH/bin/$base" ]]; then
         build_completion "$GOPATH/bin/$base"
+        rc=$?
     elif hash "$1" 2> /dev/null; then
         build_completion "$1"
+        rc=$?
     fi
-    echo "done."
+    if (( rc == 0 )); then
+        echo "done."
+    else
+        echo "failed (exit $rc)."
+        if [[ -e ./skipped-completions.txt ]] && ! grep -qxF "$base" ./skipped-completions.txt; then
+            echo "$base" >> ./skipped-completions.txt
+            echo "  -> added '$base' to skipped-completions.txt"
+        fi
+    fi
 }
 
 function build_completion {
-    base=$(basename "$1")
-    COMPLETION="$("$1" completion zsh 2> /dev/null)"
-    if [[ $? -eq 0 ]]; then
+    local cmd="$1"
+    local base=$(basename "$cmd")
+    local -a runner=()
+    if command -v gtimeout >/dev/null 2>&1; then
+        runner=(gtimeout 5)
+    fi
+    local COMPLETION
+    COMPLETION="$("${runner[@]}" "$cmd" completion zsh 2> /dev/null)"
+    local rc=$?
+    if (( rc == 0 )); then
         echo "$COMPLETION" > "./zsh/comp/_$base"
     fi
+    return $rc
 }
 
 # install-cargo-crate BIN_NAME GIT_URL
@@ -70,7 +89,11 @@ function install-cargo-crate {
         return 1
     fi
     echo "Installing $bin_name from $git_url ..."
-    cargo install --git "$git_url" || {
+    # Use the system git CLI for fetching so url.insteadOf rewrites and the
+    # user's ssh-agent / credential helper behave the same as a normal
+    # `git clone`. Without this, cargo's libgit2 backend fails on hosts
+    # that rewrite https://github.com to ssh://git@github.com.
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --git "$git_url" || {
         echo "[warn] failed to install $bin_name from $git_url" >&2
         return 1
     }
