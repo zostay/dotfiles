@@ -146,8 +146,10 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 ## Dependencies
 
 - `tmux >= 3.1` (for percentage splits and `display-popup`)
-- [`recon`](https://github.com/gavraz/recon) on `$PATH` (otherwise the
-  bottom-left pane prints a "not installed" hint and retries every 30 s)
+- [`recon`](https://github.com/gavraz/recon) — `./install.sh` installs it
+  via `cargo install --git ...` if it's missing. If installation fails
+  (e.g. no `cargo`), the bottom-left pane prints a "not installed" hint
+  and retries every 30 s.
 - `codex` on `$PATH` if you want the `[o]` menu option to work
 - `claude` on `$PATH` (already configured by `zsh/rc/85-claude`)
 
@@ -161,4 +163,5 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 | `bin/work-supervisor` | Relaunch loop + menu around shell/claude/codex        |
 | `bin/recon-loop`      | Restart-recon-forever wrapper                         |
 | `bin/work-status`     | Emits the clickable session list for the status line  |
+| `bin/work-switch`     | Resolves a status-line click index to a session name  |
 | `bin/work-worktree`   | Idempotent `git worktree add` helper                  |

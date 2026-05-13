@@ -53,4 +53,27 @@ function build_completion {
     fi
 }
 
+# install-cargo-crate BIN_NAME GIT_URL
+#
+# Ensure a Rust binary crate is installed. No-op if BIN_NAME is already
+# on PATH; otherwise runs `cargo install --git GIT_URL`. Warns and
+# continues if cargo isn't available.
+function install-cargo-crate {
+    local bin_name="$1"
+    local git_url="$2"
+    if command -v "$bin_name" >/dev/null 2>&1; then
+        echo "$bin_name already installed at $(command -v $bin_name)"
+        return 0
+    fi
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "[warn] cargo not found; skipping $bin_name install from $git_url" >&2
+        return 1
+    fi
+    echo "Installing $bin_name from $git_url ..."
+    cargo install --git "$git_url" || {
+        echo "[warn] failed to install $bin_name from $git_url" >&2
+        return 1
+    }
+}
+
 # vim: ft=zsh

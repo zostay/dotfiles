@@ -134,3 +134,9 @@ link-file XCompose ~/.XCompose
 tmpl-link-file minikube/offlineimap.yaml ~/.zostay-minikube/offlineimap.yaml
 
 link-file rotate-music.yaml ~/.rotate-music.yaml
+
+echo "Ensuring external tools."
+
+# recon: tmux-native dashboard for Claude Code sessions. Used by the
+# `workon` 3-pane layout (bottom-left pane). See README.md.
+install-cargo-crate recon https://github.com/gavraz/recon
