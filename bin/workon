@@ -27,9 +27,10 @@ DIR=$2
 function initialize_session {
     SESSION_NAME="$1"
     SESSION_DIR="$2"
+    CLAUDE_WORK="$3"
     SHORT_DIR=$( basename $( dirname "$SESSION_DIR" ) )
 
-    add-claude "$SESSION_NAME" "$SESSION_DIR"
+    add-claude "$SESSION_NAME" "$SESSION_DIR" "$CLAUDE_WORK"
 
     if (( $EDITOR_MODE )); then
         add-editor "$SESSION_NAME" "$SESSION_DIR"
@@ -111,7 +112,16 @@ else
         fi
         tmux new-session -d -x "$cols" -y "$lines" \
             -c "$WORK_DIR" -s "$SESSION_NAME" "work-supervisor --default=zsh"
-        initialize_session "$SESSION_NAME" "$WORK_DIR"
+
+        # Tell add-claude (and from there work-supervisor) to launch
+        # `claude -w WORK_NAME` so the WorktreeCreate hook fires and claude
+        # treats the existing worktree as managed. Prime sessions stay bare.
+        if [[ "$WORK_NAME" == "prime" ]]; then
+            CLAUDE_WORK=""
+        else
+            CLAUDE_WORK="$WORK_NAME"
+        fi
+        initialize_session "$SESSION_NAME" "$WORK_DIR" "$CLAUDE_WORK"
     fi
 
     if [[ -n "$TMUX" ]]; then

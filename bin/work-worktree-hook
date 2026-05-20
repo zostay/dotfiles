@@ -1,0 +1,41 @@
+#!/bin/zsh
+
+# WorktreeCreate hook for Claude Code.
+#
+# Claude invokes this hook (registered in ~/.claude/settings.json) when
+# `claude -w NAME` needs a worktree. Contract:
+#
+#   stdin:  JSON `{"name": "<slug>"}`
+#   stdout: absolute path to the worktree directory
+#
+# We delegate to `work-worktree`, which uses the same `<base>-worktrees/<name>`
+# layout that `workon -w` already creates. If `workon` already made the
+# worktree, `work-worktree` returns its path; otherwise it creates one.
+# Either way Claude ends up with a worktree it considers self-managed
+# (so it stops chdir'ing back to the main checkout via --git-common-dir).
+
+emulate -L zsh
+setopt no_unset pipefail
+
+input="$(cat)"
+name="$( print -r -- "$input" \
+    | python3 -c 'import sys, json; print(json.load(sys.stdin).get("name") or "", end="")' \
+    2>/dev/null )"
+
+if [[ -z "$name" ]]; then
+    print -u2 'work-worktree-hook: missing "name" in stdin JSON'
+    exit 1
+fi
+
+# Find the main worktree, regardless of whether $PWD is the main checkout
+# or a linked worktree. `git worktree list --porcelain` always lists the
+# main worktree first.
+main_wt="$( git worktree list --porcelain 2>/dev/null \
+    | awk '$1=="worktree"{print $2; exit}' )"
+
+if [[ -z "$main_wt" ]]; then
+    print -u2 "work-worktree-hook: $PWD is not inside a git working tree"
+    exit 1
+fi
+
+exec work-worktree "$main_wt" "$name"

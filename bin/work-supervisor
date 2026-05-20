@@ -9,10 +9,13 @@ emulate -L zsh
 setopt no_unset
 
 DEFAULT=claude
+WORKTREE=""
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --default=*) DEFAULT="${1#--default=}"; shift ;;
-        --default)   DEFAULT="$2"; shift 2 ;;
+        --default=*)  DEFAULT="${1#--default=}"; shift ;;
+        --default)    DEFAULT="$2"; shift 2 ;;
+        --worktree=*) WORKTREE="${1#--worktree=}"; shift ;;
+        --worktree)   WORKTREE="$2"; shift 2 ;;
         --) shift; break ;;
         *)  echo "work-supervisor: unknown arg: $1" >&2; exit 2 ;;
     esac
@@ -20,9 +23,19 @@ done
 
 next="$DEFAULT"
 
+# --worktree NAME makes every claude relaunch go through `claude -w NAME`,
+# which triggers the WorktreeCreate hook (bin/work-worktree-hook) so claude
+# treats this session as worktree-managed instead of chdir'ing back to the
+# main checkout. Bare `claude` would re-trip that bug on the next relaunch.
 run_choice() {
     case $1 in
-        claude) claude ;;
+        claude)
+            if [[ -n "$WORKTREE" ]]; then
+                claude -w "$WORKTREE"
+            else
+                claude
+            fi
+            ;;
         codex)  codex ;;
         shell|zsh) ${SHELL:-zsh} -l ;;
         *) return 1 ;;
