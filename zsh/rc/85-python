@@ -1,6 +1,5 @@
 . "$HOME/.zsh/functions/paths"
 
-
 export PYENV_ROOT="$HOME/.pyenv"
 if hash pyenv 2>/dev/null; then
     [[ -d "$PYENV_ROOT/bin" ]] && __prepend_path "$PYENV_ROOT/bin"
