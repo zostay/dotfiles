@@ -1,66 +1,24 @@
-#!/usr/bin/env perl
-use v5.14;
-use FindBin;
-use lib "$FindBin::Bin/../bin/lib";
-use Zostay qw( %FG %FX );
+#!/usr/bin/env bash
+set -u
+shopt -s nullglob
 
-my $duh;
-my $multiplier;
+dirs=()
 
-# MacOS will give us 512-byte blocks at a minimum (and default)
-if ($^O eq 'darwin') {
-  $multiplier = 512;
-  open $duh, '-|', qw( du -s ), glob "$ENV{HOME}/projects/*/*"
-    or die "cannot run du: $!";
-}
+# Top-level projects, two levels deep. Skip ~/projects/go's bin/pkg/src
+# subtrees — bin and pkg are Go build caches (not projects), and src is
+# the parent of the real Go projects, expanded separately below.
+for d in "$HOME"/projects/*/*; do
+    case $d in
+        "$HOME"/projects/go/bin|"$HOME"/projects/go/pkg|"$HOME"/projects/go/src)
+            continue ;;
+    esac
+    dirs+=("$d")
+done
 
-# Linux will give us bytes when asked
-else {
-  $multiplier = 1;
-  open $duh, '-|', qw( du -sb ), glob "$ENV{HOME}/projects/*/*"
-    or die "cannot run du: $!";
-}
+# Go projects follow workon's $GOPATH/src/<host>/<owner>/<repo> convention.
+for d in "$HOME"/projects/go/src/*/*/*; do
+    [[ -d $d ]] || continue
+    dirs+=("$d")
+done
 
-my @list;
-while (<$duh>) {
-    chomp;
-
-    my ($size, $dir) = split /\s+/;
-
-    push @list, [ $size, $dir];
-}
-
-my @top_n = (sort { $b->[0] <=> $a->[0] } @list)[0 .. 9];
-for my $top (@top_n) {
-    last unless $top;
-
-    my  $b = $multiplier * $top->[0];
-    my $kb = $b / 2 ** 10;
-    my $mb = $b / 2 ** 20;
-    my $gb = $b / 2 ** 30;
-    my $tb = $b / 2 ** 40;
-
-    my ($color, $size);
-    if ($tb >= 1) {
-        $color = $FG{196};
-        $size  = sprintf "%.1fT", ${tb} if $tb >= 1;
-    }
-    elsif ($gb >= 1) {
-        $color = $FG{208};
-        $size  = sprintf "%.1fG", ${gb} if $gb >= 1;
-    }
-    elsif ($mb >= 1) {
-        $color = $FG{226};
-        $size  = sprintf "%.1fM", ${mb} if $mb >= 1;
-    }
-    elsif ($kb >= 1) {
-        $color = $FG{118};
-        $size  = sprintf "%.1fK", ${kb} if $kb >= 1;
-    }
-    else {
-        $color = $FG{21};
-        $size  = "${b}B";
-    }
-
-    printf "$color%8s $FG{179}%s$FX{reset}\n", $size, $top->[1];
-}
+exec "$(dirname "$0")/largest-dirs" "$@" "${dirs[@]}"

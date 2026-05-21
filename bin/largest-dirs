@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+use v5.14;
+use FindBin;
+use lib "$FindBin::Bin/../bin/lib";
+use Zostay qw( %FG %FX );
+use Getopt::Long qw( :config bundling );
+
+my $count = 10;
+GetOptions("n|count=i" => \$count)
+    or die "usage: $0 [-n|--count COUNT] PATH...\n";
+
+die "usage: $0 [-n|--count COUNT] PATH...\n" unless @ARGV;
+
+# Histogram bar: assume terminal >= 60 cols. Layout per line is
+#   "%8s %-${BAR_WIDTH}s %s" => 8 + 1 + BAR_WIDTH + 1 + path.
+# With BAR_WIDTH = 20 that fits in 60 cols before the path, leaving 30
+# cols for the path itself (paths longer than that will overflow, which
+# is fine for an interactive tool).
+my $BAR_WIDTH = 20;
+
+# du -k reports kilobytes on both BSD (macOS) and GNU du, so the result
+# is portable without per-OS multipliers.
+open my $duh, '-|', 'du', '-sk', @ARGV
+    or die "cannot run du: $!";
+
+my @list;
+while (<$duh>) {
+    chomp;
+    my ($size, $dir) = split /\s+/, $_, 2;
+    push @list, [ $size, $dir ];
+}
+
+my @sorted = sort { $b->[0] <=> $a->[0] } @list;
+my @top_n  = @sorted > $count ? @sorted[0 .. $count - 1] : @sorted;
+
+my $max = @top_n ? $top_n[0][0] : 0;
+
+for my $top (@top_n) {
+    my  $b = 1024 * $top->[0];
+    my $kb = $b / 2 ** 10;
+    my $mb = $b / 2 ** 20;
+    my $gb = $b / 2 ** 30;
+    my $tb = $b / 2 ** 40;
+
+    my ($color, $size);
+    if ($tb >= 1) {
+        $color = $FG{196};
+        $size  = sprintf "%.1fT", $tb;
+    }
+    elsif ($gb >= 1) {
+        $color = $FG{208};
+        $size  = sprintf "%.1fG", $gb;
+    }
+    elsif ($mb >= 1) {
+        $color = $FG{226};
+        $size  = sprintf "%.1fM", $mb;
+    }
+    elsif ($kb >= 1) {
+        $color = $FG{118};
+        $size  = sprintf "%.1fK", $kb;
+    }
+    else {
+        $color = $FG{21};
+        $size  = "${b}B";
+    }
+
+    my $bar_len = $max > 0 ? int(($top->[0] / $max) * $BAR_WIDTH + 0.5) : 0;
+    my $bar     = ('█' x $bar_len) . (' ' x ($BAR_WIDTH - $bar_len));
+
+    printf "$color%8s %s$color%s$FX{reset} $FG{179}%s$FX{reset}\n",
+        $size, $FX{reset}, $bar, $top->[1];
+}
