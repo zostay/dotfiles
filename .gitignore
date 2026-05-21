@@ -1,3 +1,5 @@
 .build
 vim/spell/*.spl
 bin/.dotfiles-go-installed
+zsh/comp/*
+!zsh/comp/.gitkeep
