@@ -10,15 +10,25 @@ setopt no_unset
 
 DEFAULT=claude
 WORKTREE=""
+typeset -a UNSETS
 while [[ $# -gt 0 ]]; do
     case $1 in
         --default=*)  DEFAULT="${1#--default=}"; shift ;;
         --default)    DEFAULT="$2"; shift 2 ;;
         --worktree=*) WORKTREE="${1#--worktree=}"; shift ;;
         --worktree)   WORKTREE="$2"; shift 2 ;;
+        --unset=*)    UNSETS+=( "${1#--unset=}" ); shift ;;
+        --unset)      UNSETS+=( "$2" ); shift 2 ;;
         --) shift; break ;;
         *)  echo "work-supervisor: unknown arg: $1" >&2; exit 2 ;;
     esac
+done
+
+# Pane 0 inherits the session environment that new-session created before
+# `tmux set-environment -r` could strip these, so clear them here. claude/codex/
+# shell launched below are children of this process and inherit the cleansed env.
+for k in "${UNSETS[@]}"; do
+    unset "$k"
 done
 
 next="$DEFAULT"

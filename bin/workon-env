@@ -1,0 +1,186 @@
+#!/bin/zsh
+
+# workon-env DIR
+#
+# Resolve the per-session environment for a workon session rooted at DIR.
+#
+# Walks from $HOME down to DIR collecting `.workon.env` then `.workon.local.env`
+# in each directory, shallowest first, so deeper (more specific) files override
+# shallower ones and `.workon.local.env` overrides `.workon.env` in the same dir.
+#
+# Emits, one per line:
+#     NAME=VALUE   for a variable to set
+#     -NAME        for a variable to unset   (mirrors `tmux show-environment`)
+#
+# `workon` turns the sets into `tmux new-session -e NAME=VALUE` (which seed the
+# session environment, inherited by every pane) and applies the unsets via
+# `tmux set-environment -r`. This is a deliberate, direnv-free mechanism: files
+# are PARSED, never sourced, so they cannot run arbitrary code.
+#
+# File format (dotenv-ish):
+#   - blank lines and lines whose first non-blank char is `#` are ignored
+#   - optional leading `export ` is stripped
+#   - `NAME=VALUE` — NAME must match [A-Za-z_][A-Za-z0-9_]*
+#   - `'single'` values are literal; `"double"` and bare values get safe
+#     expansion of $VAR / ${VAR} (looked up in the accumulating set, then the
+#     real environment; undefined -> empty). Command substitution ($(...) and
+#     backticks) is NEVER evaluated — it passes through as literal text.
+#   - bare values may carry a trailing ` # comment` (whitespace + #); quote the
+#     value to keep a literal #.
+#   - `unset NAME` removes an inherited variable.
+
+emulate -L zsh
+setopt extended_glob no_unset pipefail
+
+dir=${1:?usage: workon-env DIR}
+
+typeset -A acc removed seen
+typeset -a order
+
+track() {
+    [[ -n "${seen[$1]+x}" ]] && return
+    seen[$1]=1
+    order+=( "$1" )
+}
+
+set_value() {
+    acc[$1]=$2
+    unset "removed[$1]"
+    track "$1"
+}
+
+set_removed() {
+    removed[$1]=1
+    unset "acc[$1]"
+    track "$1"
+}
+
+# Look up NAME: prefer values set earlier in this resolution, then the real
+# environment. Result in $REPLY. Never evaluates anything.
+lookup_var() {
+    if [[ -n "${acc[$1]+x}" ]]; then
+        REPLY=${acc[$1]}
+    else
+        REPLY=${(P)1-}
+    fi
+}
+
+# Expand $VAR / ${VAR} only. No command substitution, no eval.
+expand_safe() {
+    local s=$1 out='' before name rest
+    while [[ -n "$s" ]]; do
+        if [[ "$s" != *'$'* ]]; then
+            out+=$s
+            break
+        fi
+        before=${s%%\$*}
+        out+=$before
+        s=${s#"$before"}        # now starts with '$'
+        s=${s#\$}               # drop the '$'
+        if [[ "$s" == \{[A-Za-z_]* ]]; then
+            rest=${s#\{}
+            if [[ "$rest" == *\}* ]]; then
+                name=${rest%%\}*}
+                lookup_var "$name"
+                out+=$REPLY
+                s=${rest#*\}}
+            else
+                out+='${'       # unterminated ${ — keep literal
+                s=$rest
+            fi
+        elif [[ "$s" == (#b)([A-Za-z_][A-Za-z0-9_]#)(*) ]]; then
+            name=$match[1]
+            s=$match[2]
+            lookup_var "$name"
+            out+=$REPLY
+        else
+            out+='$'            # '$' not starting a name — keep literal
+        fi
+    done
+    print -r -- "$out"
+}
+
+dequote_and_expand() {
+    local v=$1 rest inner
+    v=${v##[[:space:]]#}                 # trim leading whitespace
+    if [[ "$v" == \"* ]]; then
+        rest=${v#\"}
+        if [[ "$rest" == *\"* ]]; then
+            inner=${rest%%\"*}           # up to closing quote; ignore trailer
+        else
+            inner=$rest
+        fi
+        expand_safe "$inner"
+    elif [[ "$v" == \'* ]]; then
+        rest=${v#\'}
+        if [[ "$rest" == *\'* ]]; then
+            inner=${rest%%\'*}
+        else
+            inner=$rest
+        fi
+        print -r -- "$inner"             # single-quoted: literal
+    else
+        v=${v%%[[:space:]]##\#*}         # strip trailing " # comment"
+        v=${v%%[[:space:]]#}             # strip trailing whitespace
+        expand_safe "$v"
+    fi
+}
+
+process_file() {
+    local file=$1 line t name value uname
+    [[ -f "$file" && -r "$file" ]] || return 0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        t=${line##[[:space:]]#}          # strip leading whitespace
+        [[ -z "$t" || "$t" == '#'* ]] && continue
+        if [[ "$t" == 'export '* ]]; then
+            t=${t#export }
+            t=${t##[[:space:]]#}
+        fi
+        if [[ "$t" == 'unset '* ]]; then
+            uname=${t#unset }
+            uname=${uname##[[:space:]]#}
+            uname=${uname%%[[:space:]]*}     # first token
+            if [[ "$uname" == [A-Za-z_][A-Za-z0-9_]# ]]; then
+                set_removed "$uname"
+            else
+                print -u2 "workon-env: skip invalid unset in $file: $line"
+            fi
+            continue
+        fi
+        if [[ "$t" != *=* ]]; then
+            print -u2 "workon-env: skip malformed line in $file: $line"
+            continue
+        fi
+        name=${t%%=*}
+        name=${name%%[[:space:]]#}       # tolerate "NAME = value"
+        value=${t#*=}
+        if [[ "$name" != [A-Za-z_][A-Za-z0-9_]# ]]; then
+            print -u2 "workon-env: skip invalid name in $file: $line"
+            continue
+        fi
+        set_value "$name" "$(dequote_and_expand "$value")"
+    done < "$file"
+}
+
+# Build the ancestor chain shallowest-first: [$HOME .. DIR] when DIR is under
+# $HOME; otherwise walk up to / (DIR may be outside $HOME in rare cases).
+typeset -a dirs
+d=$dir
+while true; do
+    dirs=( "$d" "${dirs[@]}" )
+    [[ "$d" == "$HOME" || "$d" == "/" ]] && break
+    d=${d:h}
+done
+
+for d in "${dirs[@]}"; do
+    process_file "$d/.workon.env"
+    process_file "$d/.workon.local.env"
+done
+
+for k in "${order[@]}"; do
+    if [[ -n "${removed[$k]+x}" ]]; then
+        print -r -- "-$k"
+    elif [[ -n "${acc[$k]+x}" ]]; then
+        print -r -- "$k=${acc[$k]}"
+    fi
+done

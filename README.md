@@ -109,6 +109,47 @@ Adds a second tmux window named `edit` running `vim` against a saved
 `.session.vim` (see `bin/add-editor`). Skip it if you're working
 entirely in Claude.
 
+## Per-session environment (`.workon.env`)
+
+You can inject environment variables into a tmux session — and every pane it
+spawns — by placing a `.workon.env` file anywhere from `$HOME` down to the
+project directory.
+
+`workon` calls `bin/workon-env` before creating the session. It walks from
+`$HOME` to the session directory (shallowest first), reading `.workon.env`
+then `.workon.local.env` in each directory. Later files win, so a
+project-level file overrides a home-level one, and `.workon.local.env`
+overrides `.workon.env` in the same directory.
+
+The variables are passed to `tmux new-session -e` and become part of the
+session environment; every pane (shell, claude, recon, editor) inherits them.
+
+**File format** (dotenv-style, never sourced — no arbitrary code runs):
+
+```sh
+# Comments and blank lines are ignored.
+export OPTIONAL=ok          # leading "export " is stripped
+
+MY_TOKEN=abc123             # bare value
+BASE_URL="https://example.com"   # double-quoted: $VAR expansion allowed
+LITERAL='no $expansion here'     # single-quoted: literal
+DERIVED=$BASE_URL/api       # references earlier vars or the real environment
+
+unset SOME_INHERITED_VAR    # strips the var from the session entirely
+```
+
+- `NAME` must match `[A-Za-z_][A-Za-z0-9_]*`.
+- `$VAR` / `${VAR}` in bare or double-quoted values resolves against
+  variables accumulated so far in this parse, then falls back to the real
+  environment. Undefined → empty.
+- Command substitution (`$(...)`, backticks) is **never** evaluated; it
+  passes through as literal text.
+- Bare values may have a trailing ` # comment`; quote the value to keep a
+  literal `#`.
+
+Commit `.workon.env` for settings the whole team shares; add `.workon.local.env`
+to `.gitignore` for secrets or machine-specific overrides.
+
 ## In-pane menu
 
 When the wrapped command in the shell or claude pane exits, the supervisor
@@ -165,3 +206,4 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 | `bin/work-status`     | Emits the clickable session list for the status line  |
 | `bin/work-switch`     | Resolves a status-line click index to a session name  |
 | `bin/work-worktree`   | Idempotent `git worktree add` helper                  |
+| `bin/workon-env`      | Resolves the `.workon.env` cascade for a session dir  |
