@@ -1,0 +1,416 @@
+#!/usr/bin/env python3
+"""Unified session monitor: Claude Code (via recon json) + Codex (via SQLite)."""
+
+import json
+import os
+import select
+import sqlite3
+import subprocess
+import sys
+import termios
+import tty
+from datetime import datetime, timezone
+
+# ── Column widths ─────────────────────────────────────────────────────────────
+
+COL_SESSION = 20
+COL_PROJECT = 16
+COL_DIR     = 16
+COL_STATUS  =  8
+COL_MODEL   = 12
+COL_CONTEXT = 12
+COL_LAST    = 11
+
+REFRESH_SECS = 5.0
+CODEX_STATE  = os.path.expanduser("~/.codex/state_5.sqlite")
+CODEX_LOGS   = os.path.expanduser("~/.codex/logs_2.sqlite")
+
+# ── ANSI ──────────────────────────────────────────────────────────────────────
+
+RESET    = "\033[0m"
+BOLD     = "\033[1m"
+REV      = "\033[7m"
+YELLOW   = "\033[33m"
+HIDE_CUR = "\033[?25l"
+SHOW_CUR = "\033[?25h"
+CLR_SCR  = "\033[2J\033[H"
+CLR_EOL  = "\033[K"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def trunc(s: str, width: int) -> str:
+    s = str(s)
+    if len(s) <= width:
+        return s.ljust(width)
+    return s[:width - 1] + "…"
+
+
+def fmt_age(ts) -> str:
+    """ISO-8601 string or millisecond int → relative time string."""
+    if ts is None:
+        return "-"
+    now = datetime.now(timezone.utc)
+    if isinstance(ts, str):
+        try:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except ValueError:
+            return "?"
+    else:
+        dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+    secs = max(0, int((now - dt).total_seconds()))
+    if secs < 60:
+        return f"{secs}s ago"
+    if secs < 3600:
+        return f"{secs // 60}m ago"
+    if secs < 86400:
+        return f"{secs // 3600}h ago"
+    return f"{secs // 86400}d ago"
+
+
+def fmt_tokens(n: int) -> str:
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M tok"
+    if n >= 1_000:
+        return f"{n // 1_000}k tok"
+    return f"{n} tok"
+
+
+def ts_seconds(s: dict) -> float:
+    """Return sort key (Unix seconds) for a session record."""
+    ts = s.get("ts")
+    if ts is None:
+        return 0.0
+    if isinstance(ts, str):
+        try:
+            return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return 0.0
+    return ts / 1000.0
+
+
+# ── Claude sessions (via recon json) ─────────────────────────────────────────
+
+def fetch_claude() -> list:
+    try:
+        r = subprocess.run(
+            ["recon", "json"], capture_output=True, text=True, timeout=5
+        )
+        data = json.loads(r.stdout)
+    except Exception:
+        return []
+    out = []
+    for s in data.get("sessions", []):
+        status = s.get("status", "Idle")
+        out.append({
+            "type":          "claude",
+            "tmux_session":  s.get("tmux_session", ""),
+            "project_name":  s.get("project_name", ""),
+            "short_dir":     os.path.basename(s.get("cwd", "")),
+            "status":        status,
+            "model_display": s.get("model_display") or s.get("model", ""),
+            "context_str":   (s.get("context_display") or "").replace(" ", ""),
+            "ts":            s.get("last_activity"),
+            "waiting":       "wait" in status.lower(),
+        })
+    return out
+
+
+# ── Codex sessions (via SQLite + tmux pane scan) ──────────────────────────────
+
+def live_codex_panes() -> list:
+    """Return [(codex_pid, tmux_session, pane_path), ...] for running Codex panes."""
+    try:
+        r = subprocess.run(
+            ["tmux", "list-panes", "-a", "-F",
+             "#{pane_pid}|||#{session_name}|||#{pane_current_path}"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return []
+    results = []
+    for line in r.stdout.splitlines():
+        parts = line.split("|||", 2)
+        if len(parts) != 3:
+            continue
+        try:
+            pane_pid = int(parts[0])
+        except ValueError:
+            continue
+        try:
+            pg = subprocess.run(
+                ["pgrep", "-P", str(pane_pid), "codex"],
+                capture_output=True, text=True,
+            )
+            for p in pg.stdout.splitlines():
+                results.append((int(p.strip()), parts[1], parts[2]))
+        except Exception:
+            pass
+    return results
+
+
+def fetch_codex() -> list:
+    if not os.path.exists(CODEX_STATE):
+        return []
+    panes = live_codex_panes()
+    if not panes:
+        return []
+
+    now_ms = datetime.now(timezone.utc).timestamp() * 1000
+    out    = []
+    seen   = set()
+
+    try:
+        db_s = sqlite3.connect(f"file:{CODEX_STATE}?mode=ro", uri=True)
+        db_s.row_factory = sqlite3.Row
+        db_l = sqlite3.connect(f"file:{CODEX_LOGS}?mode=ro", uri=True) \
+               if os.path.exists(CODEX_LOGS) else None
+
+        all_threads = db_s.execute(
+            "SELECT id, cwd, model, updated_at_ms, tokens_used, has_user_event "
+            "FROM threads WHERE archived=0 ORDER BY updated_at_ms DESC"
+        ).fetchall()
+
+        for codex_pid, tmux_session, pane_path in panes:
+            thread_id = None
+
+            # Primary: match via PID recorded in logs process_uuid
+            if db_l:
+                row = db_l.execute(
+                    "SELECT thread_id FROM logs "
+                    "WHERE process_uuid LIKE ? ORDER BY ts DESC LIMIT 1",
+                    (f"pid:{codex_pid}:%",),
+                ).fetchone()
+                if row:
+                    thread_id = row[0]
+
+            # Fallback: cwd prefix match
+            if not thread_id:
+                for t in all_threads:
+                    cwd = t["cwd"] or ""
+                    if pane_path.startswith(cwd) or cwd.startswith(pane_path):
+                        thread_id = t["id"]
+                        break
+
+            if not thread_id or thread_id in seen:
+                continue
+            seen.add(thread_id)
+
+            t = db_s.execute(
+                "SELECT cwd, model, updated_at_ms, tokens_used, has_user_event "
+                "FROM threads WHERE id=?", (thread_id,)
+            ).fetchone()
+            if not t:
+                continue
+
+            age_s = (now_ms - (t["updated_at_ms"] or 0)) / 1000
+            if t["has_user_event"]:
+                status = "Waiting"
+            elif age_s < 60:
+                status = "Running"
+            else:
+                status = "Idle"
+
+            cwd = t["cwd"] or ""
+            out.append({
+                "type":          "codex",
+                "tmux_session":  tmux_session,
+                "project_name":  os.path.basename(cwd),
+                "short_dir":     os.path.basename(cwd),
+                "status":        status,
+                "model_display": t["model"] or "",
+                "context_str":   fmt_tokens(t["tokens_used"] or 0),
+                "ts":            t["updated_at_ms"],
+                "waiting":       bool(t["has_user_event"]),
+            })
+
+        db_s.close()
+        if db_l:
+            db_l.close()
+
+    except sqlite3.Error:
+        pass
+
+    return out
+
+
+# ── Merged load ───────────────────────────────────────────────────────────────
+
+def load_sessions() -> tuple:
+    claude = fetch_claude()
+    codex  = fetch_codex()
+    merged = claude + codex
+    merged.sort(key=ts_seconds, reverse=True)
+
+    warnings = []
+    if not claude:
+        warnings.append("recon unavailable — showing Codex only" if codex
+                        else "no sessions found")
+    return merged, warnings
+
+
+# ── Rendering ─────────────────────────────────────────────────────────────────
+
+def render(sessions: list, selected: int, warnings: list) -> None:
+    try:
+        term_w = os.get_terminal_size().columns
+    except OSError:
+        term_w = 100
+
+    col_s  = COL_SESSION
+    col_p  = COL_PROJECT
+    col_d  = COL_DIR
+    col_st = COL_STATUS
+    col_m  = COL_MODEL
+    col_c  = COL_CONTEXT
+    col_l  = COL_LAST
+    # 2 = "▶ " indicator, 7 = inter-column spaces
+    fixed = 2 + col_s + col_st + col_m + col_c + col_l + 7
+    avail = term_w - fixed
+    if avail < col_p + col_d:
+        half  = max(avail // 2, 4)
+        col_d = half
+        col_p = max(avail - half, 4)
+
+    def fmt_row(ind, vals, highlight=False):
+        s_v, p_v, d_v, st_v, m_v, c_v, l_v = vals
+        line = (
+            f"{ind} "
+            f"{trunc(s_v, col_s)} "
+            f"{trunc(p_v, col_p)} "
+            f"{trunc(d_v, col_d)} "
+            f"{trunc(st_v, col_st)} "
+            f"{trunc(m_v, col_m)} "
+            f"{trunc(c_v, col_c)} "
+            f"{trunc(l_v, col_l)}"
+        )
+        if highlight:
+            line = REV + line + RESET
+        return line + CLR_EOL + "\n"
+
+    buf = [HIDE_CUR, CLR_SCR]
+
+    # Header
+    hdr = fmt_row(
+        " ",
+        ("SESSION", "PROJECT", "DIR", "STATUS", "MODEL", "CONTEXT", "LAST ACTIVE"),
+    )
+    buf.append(BOLD + hdr.rstrip("\n") + RESET + "\n")
+
+    if sessions:
+        for i, s in enumerate(sessions):
+            buf.append(fmt_row(
+                "▶" if i == selected else " ",
+                (
+                    s["tmux_session"],
+                    s["project_name"],
+                    s["short_dir"],
+                    s["status"],
+                    s["model_display"],
+                    s["context_str"],
+                    fmt_age(s["ts"]),
+                ),
+                highlight=(i == selected),
+            ))
+    else:
+        buf.append("  (no sessions)" + CLR_EOL + "\n")
+
+    for w in warnings:
+        buf.append(f"  {YELLOW}{w}{RESET}{CLR_EOL}\n")
+
+    sys.stdout.write("".join(buf))
+    sys.stdout.flush()
+
+
+# ── Keyboard ──────────────────────────────────────────────────────────────────
+
+def read_key(fd: int, timeout: float) -> str:
+    rlist, _, _ = select.select([fd], [], [], timeout)
+    if not rlist:
+        return "TIMEOUT"
+    ch = os.read(fd, 1).decode("utf-8", errors="replace")
+    if ch != "\x1b":
+        return ch
+    rlist2, _, _ = select.select([fd], [], [], 0.05)
+    if not rlist2:
+        return "ESC"
+    ch2 = os.read(fd, 1).decode("utf-8", errors="replace")
+    if ch2 != "[":
+        return "ESC"
+    rlist3, _, _ = select.select([fd], [], [], 0.05)
+    if not rlist3:
+        return "ESC"
+    return "ESC[" + os.read(fd, 1).decode("utf-8", errors="replace")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main() -> None:
+    if not os.environ.get("TMUX"):
+        print("sessions: must be run inside tmux", file=sys.stderr)
+        sys.exit(1)
+
+    fd    = sys.stdin.fileno()
+    saved = termios.tcgetattr(fd)
+
+    def restore():
+        try:
+            termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+            sys.stdout.write(SHOW_CUR + "\n")
+            sys.stdout.flush()
+        except Exception:
+            pass
+
+    sessions, warnings = [], []
+    selected    = 0
+    switch_to   = None   # set when user picks a session to switch to
+
+    try:
+        tty.setraw(fd)
+        sessions, warnings = load_sessions()
+        render(sessions, selected, warnings)
+
+        while True:
+            key = read_key(fd, REFRESH_SECS)
+
+            if key in ("TIMEOUT", "r"):
+                sessions, warnings = load_sessions()
+                selected = min(selected, max(0, len(sessions) - 1))
+                render(sessions, selected, warnings)
+                continue
+
+            if key in ("q", "\x03", "ESC"):
+                break
+
+            if not sessions:
+                continue
+
+            if key in ("j", "ESC[B"):       # down
+                selected = (selected + 1) % len(sessions)
+                render(sessions, selected, warnings)
+
+            elif key in ("k", "ESC[A"):     # up
+                selected = (selected - 1) % len(sessions)
+                render(sessions, selected, warnings)
+
+            elif key in ("\r", "\n", "l", "ESC[C"):   # enter / l / →
+                switch_to = sessions[selected]["tmux_session"]
+                break
+
+            elif key == "n":                # next waiting for input
+                waiting = [i for i, s in enumerate(sessions) if s["waiting"]]
+                if waiting:
+                    nxt = next((i for i in waiting if i > selected), waiting[0])
+                    switch_to = sessions[nxt]["tmux_session"]
+                    break
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        restore()
+
+    if switch_to:
+        subprocess.run(["tmux", "switch-client", "-t", f"={switch_to}"])
+
+
+if __name__ == "__main__":
+    main()

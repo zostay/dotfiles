@@ -39,6 +39,6 @@ tmux split-window -h -t "$SESSION_NAME:0.0" -c "$SESSION_DIR" "$sup_cmd"
 # on workon having created the session at the client's real dimensions
 # (via tmux new-session -x/-y) so the percentage resolves correctly.
 tmux split-window -v -t "$SESSION_NAME:0.0" -l 20% \
-    -c "$SESSION_DIR" "recon-loop"
+    -c "$SESSION_DIR" "sessions-loop"
 
 tmux select-pane -t "$SESSION_NAME:0.0"
