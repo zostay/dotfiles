@@ -50,11 +50,26 @@ def bg(rgb):
 # ── Palette ───────────────────────────────────────────────────────────────────
 
 C_HEADER    = ( 80, 200, 200)   # teal
-C_BRIGHT    = (240, 240, 240)   # session/project names
+C_BRIGHT    = (240, 240, 240)   # project name
 C_NORMAL    = (190, 190, 190)   # lightgray default
 C_DIM       = (130, 130, 130)   # idle, separators
 C_BRANCH    = (120, 210, 140)   # branch + glyph
 C_WARN      = (235, 200,  90)   # yellow
+
+# Source palette: SESSION column color identifies which agent + config
+# produced the session. Each pastel sits at roughly the brightness of
+# C_NORMAL so they coexist visually without one dominating.
+C_SRC_CLAUDE_DEFAULT = (170, 215, 240)   # pastel sky blue
+C_SRC_CLAUDE_BAMBEE  = (210, 185, 235)   # pastel lavender
+C_SRC_CODEX          = (180, 225, 195)   # pastel mint
+
+SRC_COLOR = {
+    "claude_default": C_SRC_CLAUDE_DEFAULT,
+    "claude_bambee":  C_SRC_CLAUDE_BAMBEE,
+    "codex":          C_SRC_CODEX,
+}
+
+BAMBEE_PREFIX = os.path.expanduser("~/projects/bambee") + "/"
 
 # Status colors
 C_STATUS = {
@@ -176,8 +191,11 @@ def fetch_claude() -> list:
     out = []
     for s in data.get("sessions", []):
         status = s.get("status", "Idle")
+        cwd    = s.get("cwd") or ""
+        source = "claude_bambee" if cwd.startswith(BAMBEE_PREFIX) else "claude_default"
         out.append({
             "type":          "claude",
+            "source":        source,
             "tmux_session":  s.get("tmux_session", ""),
             "project_name":  s.get("project_name", ""),
             "branch":        s.get("branch") or "",
@@ -330,6 +348,7 @@ def fetch_codex() -> list:
             cwd = t["cwd"] or ""
             out.append({
                 "type":          "codex",
+                "source":        "codex",
                 "tmux_session":  tmux_session,
                 "project_name":  os.path.basename(cwd),
                 "branch":        t["git_branch"] or "",
@@ -358,7 +377,7 @@ def load_sessions() -> tuple:
     claude = fetch_claude()
     codex  = fetch_codex()
     merged = claude + codex
-    merged.sort(key=ts_seconds, reverse=True)
+    merged.sort(key=lambda s: s.get("tmux_session", "").lower())
 
     warnings = []
     if not claude:
@@ -497,8 +516,9 @@ def render(sessions: list, selected: int, warnings: list) -> None:
                 row_parts.append(fg(C_BRIGHT) + "> ")
             else:
                 row_parts.append(fg(C_DIM) + "  ")
+            sess_color = SRC_COLOR.get(s.get("source", ""), C_BRIGHT)
             cells = [
-                cell(s["tmux_session"],     C_BRIGHT,                  col_s),
+                cell(s["tmux_session"],     sess_color,                col_s),
                 project_cell(s["project_name"], s["branch"],           col_p),
                 cell(s["short_dir"],        C_NORMAL,                  col_d),
                 cell(s["status"],           status_color(s["status"]), col_st),
