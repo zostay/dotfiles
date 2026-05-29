@@ -302,7 +302,7 @@ def render(sessions: list, selected: int, warnings: list) -> None:
         )
         if highlight:
             line = REV + line + RESET
-        return line + CLR_EOL + "\n"
+        return line + CLR_EOL + "\r\n"
 
     buf = [HIDE_CUR, CLR_SCR]
 
@@ -311,7 +311,7 @@ def render(sessions: list, selected: int, warnings: list) -> None:
         " ",
         ("SESSION", "PROJECT", "DIR", "STATUS", "MODEL", "CONTEXT", "LAST ACTIVE"),
     )
-    buf.append(BOLD + hdr.rstrip("\n") + RESET + "\n")
+    buf.append(BOLD + hdr.rstrip("\r\n") + RESET + CLR_EOL + "\r\n")
 
     if sessions:
         for i, s in enumerate(sessions):
@@ -329,10 +329,10 @@ def render(sessions: list, selected: int, warnings: list) -> None:
                 highlight=(i == selected),
             ))
     else:
-        buf.append("  (no sessions)" + CLR_EOL + "\n")
+        buf.append("  (no sessions)" + CLR_EOL + "\r\n")
 
     for w in warnings:
-        buf.append(f"  {YELLOW}{w}{RESET}{CLR_EOL}\n")
+        buf.append(f"  {YELLOW}{w}{RESET}{CLR_EOL}\r\n")
 
     sys.stdout.write("".join(buf))
     sys.stdout.flush()
@@ -372,7 +372,7 @@ def main() -> None:
     def restore():
         try:
             termios.tcsetattr(fd, termios.TCSADRAIN, saved)
-            sys.stdout.write(SHOW_CUR + "\n")
+            sys.stdout.write(SHOW_CUR + "\r\n")
             sys.stdout.flush()
         except Exception:
             pass
