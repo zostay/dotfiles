@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 COL_SESSION = 20
 COL_PROJECT = 16
-COL_DIR     = 16
+COL_DIR     = 22
 COL_STATUS  =  8
 COL_MODEL   = 12
 COL_CONTEXT = 12
@@ -43,6 +43,15 @@ def trunc(s: str, width: int) -> str:
     if len(s) <= width:
         return s.ljust(width)
     return s[:width - 1] + "~"
+
+
+def parent_basename(path: str) -> str:
+    """/Users/sterling/projects/bambee/panfactum -> bambee/panfactum."""
+    if not path:
+        return ""
+    parent = os.path.basename(os.path.dirname(path))
+    base   = os.path.basename(path)
+    return f"{parent}/{base}" if parent else base
 
 
 def pretty_model(name: str) -> str:
@@ -122,7 +131,7 @@ def fetch_claude() -> list:
             "type":          "claude",
             "tmux_session":  s.get("tmux_session", ""),
             "project_name":  s.get("project_name", ""),
-            "short_dir":     os.path.basename(s.get("cwd", "")),
+            "short_dir":     parent_basename(s.get("cwd", "")),
             "status":        status,
             "model_display": pretty_model(s.get("model_display") or s.get("model", "")),
             "context_str":   (s.get("context_display") or "").replace(" ", ""),
@@ -232,7 +241,7 @@ def fetch_codex() -> list:
                 "type":          "codex",
                 "tmux_session":  tmux_session,
                 "project_name":  os.path.basename(cwd),
-                "short_dir":     os.path.basename(cwd),
+                "short_dir":     parent_basename(cwd),
                 "status":        status,
                 "model_display": pretty_model(t["model"] or ""),
                 "context_str":   fmt_tokens(t["tokens_used"] or 0),
