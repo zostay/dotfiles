@@ -42,7 +42,24 @@ def trunc(s: str, width: int) -> str:
     s = str(s)
     if len(s) <= width:
         return s.ljust(width)
-    return s[:width - 1] + "…"
+    return s[:width - 1] + "~"
+
+
+def pretty_model(name: str) -> str:
+    """claude-sonnet-4-6 -> Sonnet 4.6, gpt-5.5 -> GPT 5.5."""
+    if not name:
+        return ""
+    n = name.strip()
+    if n.startswith("claude-"):
+        parts = n.split("-")
+        # claude-{family}-{maj}-{min} → "Family maj.min"
+        if len(parts) >= 4:
+            family = parts[1].capitalize()
+            return f"{family} {parts[2]}.{parts[3]}"
+        return n
+    if n.startswith("gpt-"):
+        return "GPT " + n[4:]
+    return n
 
 
 def fmt_age(ts) -> str:
@@ -107,7 +124,7 @@ def fetch_claude() -> list:
             "project_name":  s.get("project_name", ""),
             "short_dir":     os.path.basename(s.get("cwd", "")),
             "status":        status,
-            "model_display": s.get("model_display") or s.get("model", ""),
+            "model_display": pretty_model(s.get("model_display") or s.get("model", "")),
             "context_str":   (s.get("context_display") or "").replace(" ", ""),
             "ts":            s.get("last_activity"),
             "waiting":       "wait" in status.lower(),
@@ -217,7 +234,7 @@ def fetch_codex() -> list:
                 "project_name":  os.path.basename(cwd),
                 "short_dir":     os.path.basename(cwd),
                 "status":        status,
-                "model_display": t["model"] or "",
+                "model_display": pretty_model(t["model"] or ""),
                 "context_str":   fmt_tokens(t["tokens_used"] or 0),
                 "ts":            t["updated_at_ms"],
                 "waiting":       bool(t["has_user_event"]),
@@ -299,7 +316,7 @@ def render(sessions: list, selected: int, warnings: list) -> None:
     if sessions:
         for i, s in enumerate(sessions):
             buf.append(fmt_row(
-                "▶" if i == selected else " ",
+                ">" if i == selected else " ",
                 (
                     s["tmux_session"],
                     s["project_name"],
