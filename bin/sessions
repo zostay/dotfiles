@@ -195,7 +195,14 @@ def fetch_claude() -> list:
 # ── Codex sessions (via SQLite + tmux pane scan) ──────────────────────────────
 
 def live_codex_panes() -> list:
-    """Return [(codex_pid, tmux_session, pane_path), ...] for running Codex panes."""
+    """Return [(codex_pid, tmux_session, pane_path), ...] for running Codex panes.
+
+    Codex's NPM wrapper runs as `node /opt/homebrew/bin/codex`, which in turn
+    execs the actual Rust binary (deep inside node_modules). The logs DB keys
+    on the Rust binary's PID, and the JS wrapper is what's parented to the
+    shell — so the binary is two levels below the pane_pid. Walk up the ppid
+    chain from every codex binary process until we hit a known pane_pid.
+    """
     try:
         r = subprocess.run(
             ["tmux", "list-panes", "-a", "-F",
@@ -204,24 +211,57 @@ def live_codex_panes() -> list:
         )
     except Exception:
         return []
-    results = []
+    pane_info = {}
     for line in r.stdout.splitlines():
         parts = line.split("|||", 2)
         if len(parts) != 3:
             continue
         try:
-            pane_pid = int(parts[0])
+            pane_info[int(parts[0])] = (parts[1], parts[2])
         except ValueError:
+            pass
+    if not pane_info:
+        return []
+
+    # Snapshot the process table once.
+    try:
+        ps = subprocess.run(
+            ["ps", "-axo", "pid=,ppid=,command="],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return []
+    ppid_map     = {}
+    codex_pids   = []
+    for line in ps.stdout.splitlines():
+        parts = line.strip().split(None, 2)
+        if len(parts) < 3:
             continue
         try:
-            pg = subprocess.run(
-                ["pgrep", "-P", str(pane_pid), "codex"],
-                capture_output=True, text=True,
-            )
-            for p in pg.stdout.splitlines():
-                results.append((int(p.strip()), parts[1], parts[2]))
-        except Exception:
-            pass
+            pid  = int(parts[0])
+            ppid = int(parts[1])
+        except ValueError:
+            continue
+        cmd = parts[2]
+        ppid_map[pid] = ppid
+        # The Rust codex binary lives under @openai/codex-<arch>/.../bin/codex.
+        # That's the PID that shows up in ~/.codex/logs_2.sqlite process_uuid.
+        # Exclude the `node /opt/homebrew/bin/codex` JS shim by ignoring node.
+        if "@openai/codex-" in cmd and cmd.rstrip().endswith("/bin/codex"):
+            codex_pids.append(pid)
+
+    results = []
+    for cpid in codex_pids:
+        cur = cpid
+        for _ in range(20):                       # ascend at most 20 levels
+            if cur in pane_info:
+                sess, path = pane_info[cur]
+                results.append((cpid, sess, path))
+                break
+            nxt = ppid_map.get(cur)
+            if not nxt or nxt <= 1:
+                break
+            cur = nxt
     return results
 
 
