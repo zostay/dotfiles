@@ -29,12 +29,54 @@ CODEX_LOGS   = os.path.expanduser("~/.codex/logs_2.sqlite")
 
 RESET    = "\033[0m"
 BOLD     = "\033[1m"
-REV      = "\033[7m"
-YELLOW   = "\033[33m"
 HIDE_CUR = "\033[?25l"
 SHOW_CUR = "\033[?25h"
 CLR_SCR  = "\033[2J\033[H"
 CLR_EOL  = "\033[K"
+FG_DEF   = "\033[39m"
+BG_DEF   = "\033[49m"
+
+
+def fg(rgb):
+    r, g, b = rgb
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def bg(rgb):
+    r, g, b = rgb
+    return f"\033[48;2;{r};{g};{b}m"
+
+
+# ── Palette ───────────────────────────────────────────────────────────────────
+
+C_HEADER    = ( 80, 200, 200)   # teal
+C_BRIGHT    = (240, 240, 240)   # session/project names
+C_NORMAL    = (190, 190, 190)   # lightgray default
+C_DIM       = (130, 130, 130)   # idle, separators
+C_BRANCH    = (120, 210, 140)   # branch + glyph
+C_WARN      = (235, 200,  90)   # yellow
+
+# Status colors
+C_STATUS = {
+    "Idle":    (130, 130, 130),
+    "New":     (110, 165, 245),
+    "Running": (120, 210, 140),
+    "Working": (120, 210, 140),
+    "Busy":    (120, 210, 140),
+    "Waiting": (235, 200,  90),
+}
+
+# Context-usage colors (ratio = used / window)
+C_CTX_OK    = C_NORMAL
+C_CTX_WARN  = (235, 200,  90)
+C_CTX_OVER  = (235, 110, 110)
+
+# Backgrounds — selected and menu bars use these. Picked to stay visibly
+# distinct from every foreground in the palette so no text vanishes.
+BG_SELECTED = ( 50,  58,  78)
+BG_MENU     = ( 28,  30,  40)
+C_MENU_KEY  = C_HEADER
+C_MENU_TEXT = (190, 190, 190)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,11 +90,8 @@ def trunc(s: str, width: int) -> str:
 BRANCH_GLYPH = ""  # Nerd Font powerline branch symbol
 
 
-def project_with_branch(project: str, branch) -> str:
-    """project + ⎇ branch, omitting the branch part for main/master/empty."""
-    if branch and branch.lower() not in ("main", "master"):
-        return f"{project} {BRANCH_GLYPH} {branch}"
-    return project or ""
+def branch_visible(branch) -> bool:
+    return bool(branch) and branch.lower() not in ("main", "master")
 
 
 def parent_basename(path: str) -> str:
@@ -140,11 +179,13 @@ def fetch_claude() -> list:
         out.append({
             "type":          "claude",
             "tmux_session":  s.get("tmux_session", ""),
-            "project_name":  project_with_branch(s.get("project_name", ""), s.get("branch")),
+            "project_name":  s.get("project_name", ""),
+            "branch":        s.get("branch") or "",
             "short_dir":     parent_basename(s.get("cwd", "")),
             "status":        status,
             "model_display": pretty_model(s.get("model_display") or s.get("model", "")),
             "context_str":   (s.get("context_display") or "").replace(" ", ""),
+            "ratio":         s.get("token_ratio"),
             "ts":            s.get("last_activity"),
             "waiting":       "wait" in status.lower(),
         })
@@ -250,11 +291,13 @@ def fetch_codex() -> list:
             out.append({
                 "type":          "codex",
                 "tmux_session":  tmux_session,
-                "project_name":  project_with_branch(os.path.basename(cwd), t["git_branch"]),
+                "project_name":  os.path.basename(cwd),
+                "branch":        t["git_branch"] or "",
                 "short_dir":     parent_basename(cwd),
                 "status":        status,
                 "model_display": pretty_model(t["model"] or ""),
                 "context_str":   fmt_tokens(t["tokens_used"] or 0),
+                "ratio":         None,
                 "ts":            t["updated_at_ms"],
                 "waiting":       bool(t["has_user_event"]),
             })
@@ -286,72 +329,156 @@ def load_sessions() -> tuple:
 
 # ── Rendering ─────────────────────────────────────────────────────────────────
 
+MENU_ITEMS = [
+    ("j/k",   "move"),
+    ("enter", "switch"),
+    ("n",     "next-input"),
+    ("r",     "refresh"),
+    ("q",     "quit"),
+]
+
+
+def compute_widths(term_w: int) -> list:
+    """Stretch configured widths proportionally to fill the terminal."""
+    weights        = [COL_SESSION, COL_PROJECT, COL_DIR,
+                      COL_STATUS, COL_MODEL, COL_CONTEXT, COL_LAST]
+    fixed_overhead = 2 + (len(weights) - 1)   # "  " indicator + inter-cell gaps
+    avail          = max(0, term_w - fixed_overhead)
+    weight_sum     = sum(weights)
+    if avail <= weight_sum:
+        return list(weights)
+    widths = [max(w, round(avail * w / weight_sum)) for w in weights]
+    # Rebalance so the row exactly fills `avail` (rounding drift).
+    drift = sum(widths) - avail
+    while drift > 0:
+        # Shrink the column furthest above its weight by 1.
+        i = max(range(len(widths)), key=lambda i: widths[i] - weights[i])
+        if widths[i] <= weights[i]:
+            break
+        widths[i] -= 1
+        drift -= 1
+    if drift < 0:
+        widths[-1] += -drift
+    return widths
+
+
+def status_color(status: str):
+    return C_STATUS.get(status, C_NORMAL)
+
+
+def context_color(ratio):
+    if ratio is None:
+        return C_CTX_OK
+    if ratio > 1.0:
+        return C_CTX_OVER
+    if ratio > 0.5:
+        return C_CTX_WARN
+    return C_CTX_OK
+
+
+def fit(s: str, width: int) -> str:
+    """Plain truncate-or-pad to `width` visible chars."""
+    s = str(s)
+    if len(s) > width:
+        return s[:width - 1] + "~"
+    return s + " " * (width - len(s))
+
+
+def cell(text: str, color, width: int) -> str:
+    """A single-color fixed-width cell."""
+    return fg(color) + fit(text, width)
+
+
+def project_cell(project: str, branch, width: int) -> str:
+    """Project name in bright; if branch is non-trivial, append ' <glyph> branch' in green."""
+    if not branch_visible(branch):
+        return cell(project, C_BRIGHT, width)
+
+    # Layout: <project><space><glyph><space><branch>, sharing the cell width.
+    suffix     = f" {BRANCH_GLYPH} {branch}"
+    full_plain = (project or "") + suffix
+    if len(full_plain) <= width:
+        body = (
+            fg(C_BRIGHT) + project +
+            fg(C_BRANCH) + suffix +
+            " " * (width - len(full_plain))
+        )
+        return body
+
+    # Doesn't fit — give project priority, then squeeze the suffix.
+    if len(project) >= width - 1:
+        return fg(C_BRIGHT) + project[:width - 1] + "~"
+    room = width - len(project)
+    # room >= 2: at least space for "~"
+    suffix_trunc = suffix[:room - 1] + "~"
+    return fg(C_BRIGHT) + project + fg(C_BRANCH) + suffix_trunc
+
+
+def render_menu(term_w: int) -> str:
+    """Bottom status line: keys + descriptions, padded across the row."""
+    text   = ""
+    plain  = ""
+    for k, desc in MENU_ITEMS:
+        chunk_plain = f"  {k} {desc}"
+        text  += fg(C_MENU_KEY) + f"  {k}" + fg(C_MENU_TEXT) + f" {desc}"
+        plain += chunk_plain
+    pad = max(0, term_w - len(plain))
+    return bg(BG_MENU) + text + " " * pad + RESET
+
+
 def render(sessions: list, selected: int, warnings: list) -> None:
     try:
-        term_w = os.get_terminal_size().columns
+        size   = os.get_terminal_size()
+        term_w = size.columns
+        term_h = size.lines
     except OSError:
-        term_w = 100
+        term_w, term_h = 100, 24
 
-    col_s  = COL_SESSION
-    col_p  = COL_PROJECT
-    col_d  = COL_DIR
-    col_st = COL_STATUS
-    col_m  = COL_MODEL
-    col_c  = COL_CONTEXT
-    col_l  = COL_LAST
-    # 2 = "▶ " indicator, 7 = inter-column spaces
-    fixed = 2 + col_s + col_st + col_m + col_c + col_l + 7
-    avail = term_w - fixed
-    if avail < col_p + col_d:
-        half  = max(avail // 2, 4)
-        col_d = half
-        col_p = max(avail - half, 4)
-
-    def fmt_row(ind, vals, highlight=False):
-        s_v, p_v, d_v, st_v, m_v, c_v, l_v = vals
-        line = (
-            f"{ind} "
-            f"{trunc(s_v, col_s)} "
-            f"{trunc(p_v, col_p)} "
-            f"{trunc(d_v, col_d)} "
-            f"{trunc(st_v, col_st)} "
-            f"{trunc(m_v, col_m)} "
-            f"{trunc(c_v, col_c)} "
-            f"{trunc(l_v, col_l)}"
-        )
-        if highlight:
-            line = REV + line + RESET
-        return line + CLR_EOL + "\r\n"
+    widths = compute_widths(term_w)
+    col_s, col_p, col_d, col_st, col_m, col_c, col_l = widths
 
     buf = [HIDE_CUR, CLR_SCR]
 
-    # Header
-    hdr = fmt_row(
-        " ",
-        ("SESSION", "PROJECT", "DIR", "STATUS", "MODEL", "CONTEXT", "LAST ACTIVE"),
-    )
-    buf.append(BOLD + hdr.rstrip("\r\n") + RESET + CLR_EOL + "\r\n")
+    # Header — teal, bold, no leading indicator color
+    headers = ["SESSION", "PROJECT", "DIR", "STATUS", "MODEL", "CONTEXT", "LAST ACTIVE"]
+    header_cells = [cell(h, C_HEADER, w) for h, w in zip(headers, widths)]
+    buf.append(BOLD + "  " + " ".join(header_cells) + RESET + CLR_EOL + "\r\n")
 
-    if sessions:
-        for i, s in enumerate(sessions):
-            buf.append(fmt_row(
-                ">" if i == selected else " ",
-                (
-                    s["tmux_session"],
-                    s["project_name"],
-                    s["short_dir"],
-                    s["status"],
-                    s["model_display"],
-                    s["context_str"],
-                    fmt_age(s["ts"]),
-                ),
-                highlight=(i == selected),
-            ))
+    # Rows used: 1 header + 1 menu + (1 if any warning). Body takes the rest.
+    body_budget = max(1, term_h - 2 - (1 if warnings else 0))
+    visible     = sessions[:body_budget]
+
+    if visible:
+        for i, s in enumerate(visible):
+            is_sel = (i == selected)
+            row_parts = []
+            if is_sel:
+                row_parts.append(bg(BG_SELECTED))
+                row_parts.append(fg(C_BRIGHT) + "> ")
+            else:
+                row_parts.append(fg(C_DIM) + "  ")
+            cells = [
+                cell(s["tmux_session"],     C_BRIGHT,                  col_s),
+                project_cell(s["project_name"], s["branch"],           col_p),
+                cell(s["short_dir"],        C_NORMAL,                  col_d),
+                cell(s["status"],           status_color(s["status"]), col_st),
+                cell(s["model_display"],    C_NORMAL,                  col_m),
+                cell(s["context_str"],      context_color(s["ratio"]), col_c),
+                cell(fmt_age(s["ts"]),      C_NORMAL,                  col_l),
+            ]
+            row_parts.append(" ".join(cells))
+            row_parts.append(FG_DEF + CLR_EOL + RESET + "\r\n")
+            buf.append("".join(row_parts))
     else:
-        buf.append("  (no sessions)" + CLR_EOL + "\r\n")
+        buf.append(fg(C_DIM) + "  (no sessions)" + RESET + CLR_EOL + "\r\n")
 
-    for w in warnings:
-        buf.append(f"  {YELLOW}{w}{RESET}{CLR_EOL}\r\n")
+    # Warnings (one line each, above the menu)
+    for w in warnings[:1]:
+        buf.append("  " + fg(C_WARN) + w + RESET + CLR_EOL + "\r\n")
+
+    # Menu pinned to the last row of the pane
+    buf.append(f"\033[{term_h};1H")
+    buf.append(render_menu(term_w))
 
     sys.stdout.write("".join(buf))
     sys.stdout.flush()
