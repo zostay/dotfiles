@@ -59,9 +59,9 @@ C_WARN      = (235, 200,  90)   # yellow
 # Source palette: SESSION column color identifies which agent + config
 # produced the session. Each pastel sits at roughly the brightness of
 # C_NORMAL so they coexist visually without one dominating.
-C_SRC_CLAUDE_DEFAULT = (170, 215, 240)   # pastel sky blue
-C_SRC_CLAUDE_BAMBEE  = (210, 185, 235)   # pastel lavender
-C_SRC_CODEX          = (180, 225, 195)   # pastel mint
+C_SRC_CLAUDE_DEFAULT = (120, 195, 250)   # saturated sky blue
+C_SRC_CLAUDE_BAMBEE  = (200, 150, 250)   # saturated lavender
+C_SRC_CODEX          = (120, 230, 165)   # saturated mint
 
 SRC_COLOR = {
     "claude_default": C_SRC_CLAUDE_DEFAULT,
