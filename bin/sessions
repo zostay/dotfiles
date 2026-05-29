@@ -513,7 +513,7 @@ def render(sessions: list, selected: int, warnings: list) -> None:
             row_parts = []
             if is_sel:
                 row_parts.append(bg(BG_SELECTED))
-                row_parts.append(fg(C_BRIGHT) + "> ")
+                row_parts.append(fg(C_BRIGHT) + "▶ ")
             else:
                 row_parts.append(fg(C_DIM) + "  ")
             sess_color = SRC_COLOR.get(s.get("source", ""), C_BRIGHT)
