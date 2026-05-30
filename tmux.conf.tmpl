@@ -74,6 +74,12 @@ bind i run-shell "recon next"
 bind W command-prompt -p "workon:" "run-shell 'workon %1'"
 bind X confirm-before -p "kill #S? (y/n)" kill-session
 
+# When the session a client is attached to is destroyed (e.g. exiting a workon
+# session), switch the client to the most-recently-active session instead of
+# detaching to the parent shell. With no sessions left the client detaches and
+# the session-closed hook below kills the server.
+set -g detach-on-destroy off
+
 # Tear the tmux server down once the last session closes so the next workon
 # cold-starts cleanly.
 set-hook -g session-closed 'run-shell "tmux ls >/dev/null 2>&1 || tmux kill-server"'
