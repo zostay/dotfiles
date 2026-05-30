@@ -84,7 +84,8 @@ C_STATUS = {
     "Running": (120, 210, 140),
     "Working": (120, 210, 140),
     "Busy":    (120, 210, 140),
-    "Waiting": (235, 200,  90),
+    "Input":   (235, 110, 110),   # red — Claude waiting on user input
+    "Waiting": (235, 110, 110),   # red — Codex waiting on user input
 }
 
 # Context-usage colors (ratio = used / window)
