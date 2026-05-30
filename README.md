@@ -42,8 +42,9 @@ Add this to crontab if this is a mail checking machine:
 # `workon`: per-project tmux layouts
 
 `workon` starts (or jumps to) a tmux session for a project, with a 3-pane
-layout tuned for coding alongside a Claude Code agent and the
-[recon](https://github.com/gavraz/recon) dashboard.
+layout tuned for coding alongside a Claude Code agent and the `sessions`
+monitor — a unified dashboard layered over
+[recon](https://github.com/gavraz/recon).
 
 ## Layout
 
@@ -52,7 +53,7 @@ layout tuned for coding alongside a Claude Code agent and the
     |  (supervised zsh)         |  (supervised)             |
     |                           |                           |
     +---------------------------+                           |
-    |  recon  (~20% tall)       |                           |
+    |  sessions  (~20% tall)    |                           |
     +---------------------------+---------------------------+
     |  [proj-1] [proj-2]* [proj-3]                 12:34    |  <- tmux status
     +-------------------------------------------------------+
@@ -61,8 +62,14 @@ layout tuned for coding alongside a Claude Code agent and the
   When the shell exits, you get an in-pane menu instead of a closed pane.
 - **Right — claude**: `claude` wrapped by the same supervisor. `/exit` drops
   to the same menu rather than killing the pane.
-- **Left bottom — recon**: wrapped by `recon-loop`, which restarts recon
-  forever (and prints a friendly hint if `recon` isn't on PATH).
+- **Left bottom — sessions**: the unified session monitor (`bin/sessions`)
+  wrapped by `sessions-loop`, which restarts it forever (and prints a
+  friendly hint if `sessions` isn't on PATH). It merges Claude Code
+  sessions (via `recon json`) and live Codex sessions (via the Codex
+  SQLite state + a tmux pane scan) into one alphabetized list, color-coded
+  by source. `j`/`k`/arrows navigate, `Enter` switches to the selected
+  session, `n` jumps to the next agent waiting for input, and it
+  auto-refreshes every 5 s.
 - **Status line**: every live tmux session is a clickable "tab" (rendered
   by `bin/work-status`); the current one is highlighted.
 
@@ -122,7 +129,7 @@ project-level file overrides a home-level one, and `.workon.local.env`
 overrides `.workon.env` in the same directory.
 
 The variables are passed to `tmux new-session -e` and become part of the
-session environment; every pane (shell, claude, recon, editor) inherits them.
+session environment; every pane (shell, claude, sessions, editor) inherits them.
 
 **File format** (dotenv-style, never sourced — no arbitrary code runs):
 
@@ -161,7 +168,7 @@ prints:
       [x] close pane (kills the whole session)
 
 Press one key. Enter accepts the default (`claude`). Choosing `[x]` from
-either pane tears down the *entire* session — shell, claude, and recon —
+either pane tears down the *entire* session — shell, claude, and sessions —
 not just that pane.
 
 ## Key bindings
@@ -187,11 +194,14 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 ## Dependencies
 
 - `tmux >= 3.1` (for percentage splits and `display-popup`)
-- [`recon`](https://github.com/gavraz/recon) — `./install.sh` installs it
-  via `cargo install --git ...` if it's missing. If installation fails
-  (e.g. no `cargo`), the bottom-left pane prints a "not installed" hint
-  and retries every 30 s.
-- `codex` on `$PATH` if you want the `[o]` menu option to work
+- `python3` — runs the `bin/sessions` TUI in the bottom-left pane. If
+  `sessions` isn't on `$PATH`, the pane prints a hint and retries every 30 s.
+- [`recon`](https://github.com/gavraz/recon) — still required as the data
+  source behind `sessions` (it shells out to `recon json` for the Claude
+  side) and behind the `prefix g` popup and `prefix i`. `./install.sh`
+  installs it via `cargo install --git ...` if it's missing.
+- `codex` on `$PATH` if you want the `[o]` menu option to work — Codex
+  sessions also show up in `sessions` via `~/.codex/state_5.sqlite`.
 - `claude` on `$PATH` (already configured by `zsh/rc/85-claude`)
 
 ## Files behind it
@@ -202,7 +212,9 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 | `bin/add-claude`      | Creates the 3-pane layout in window 0                 |
 | `bin/add-editor`      | Adds the `edit` window when `-e` is passed            |
 | `bin/work-supervisor` | Relaunch loop + menu around shell/claude/codex        |
-| `bin/recon-loop`      | Restart-recon-forever wrapper                         |
+| `bin/sessions`        | Unified Claude + Codex session monitor (bottom-left pane) |
+| `bin/sessions-loop`   | Restart-`sessions`-forever wrapper                    |
+| `bin/recon-loop`      | Restart-recon-forever wrapper (superseded by `sessions-loop`) |
 | `bin/work-status`     | Emits the clickable session list for the status line  |
 | `bin/work-switch`     | Resolves a status-line click index to a session name  |
 | `bin/work-worktree`   | Idempotent `git worktree add` helper                  |
