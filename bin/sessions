@@ -36,6 +36,11 @@ CLR_EOL  = "\033[K"
 FG_DEF   = "\033[39m"
 BG_DEF   = "\033[49m"
 
+# Mouse: 1003 = report any-motion + button events, 1006 = SGR extended coords
+# (so columns/rows past 223 still parse). Enabled while the monitor runs.
+MOUSE_ON  = "\033[?1003h\033[?1006h"
+MOUSE_OFF = "\033[?1006l\033[?1003l"
+
 
 def fg(rgb):
     r, g, b = rgb
@@ -55,6 +60,7 @@ C_NORMAL    = (190, 190, 190)   # lightgray default
 C_DIM       = (130, 130, 130)   # idle, separators
 C_BRANCH    = (120, 210, 140)   # branch + glyph
 C_WARN      = (235, 200,  90)   # yellow
+C_STAR      = (255, 200,  60)   # gold — marks sessions in the current tmux session
 
 # Source palette: SESSION column color identifies which agent + config
 # produced the session. Each pastel sits at roughly the brightness of
@@ -88,8 +94,12 @@ C_CTX_OVER  = (235, 110, 110)
 
 # Backgrounds — selected and menu bars use these. Picked to stay visibly
 # distinct from every foreground in the palette so no text vanishes.
-BG_SELECTED = ( 50,  58,  78)
-BG_MENU     = ( 28,  30,  40)
+BG_SELECTED       = ( 50,  58,  78)
+# Hover backgrounds brighten the row the mouse sits over. The selected-row
+# variant is a lighter take on BG_SELECTED so hover reads on top of the cursor.
+BG_HOVER          = ( 40,  46,  62)
+BG_SELECTED_HOVER = ( 74,  84, 110)
+BG_MENU           = ( 28,  30,  40)
 C_MENU_KEY  = C_HEADER
 C_MENU_TEXT = (190, 190, 190)
 
@@ -103,6 +113,7 @@ def trunc(s: str, width: int) -> str:
 
 
 BRANCH_GLYPH = ""  # Nerd Font powerline branch symbol
+STAR_GLYPH   = "★"  # filled five-pointed star marking the current tmux session
 
 
 def branch_visible(branch) -> bool:
@@ -421,6 +432,18 @@ def compute_widths(term_w: int) -> list:
     return widths
 
 
+def current_tmux_session() -> str:
+    """Name of the tmux session the monitor itself is running in."""
+    try:
+        r = subprocess.run(
+            ["tmux", "display-message", "-p", "#S"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+
 def status_color(status: str):
     return C_STATUS.get(status, C_NORMAL)
 
@@ -446,6 +469,12 @@ def fit(s: str, width: int) -> str:
 def cell(text: str, color, width: int) -> str:
     """A single-color fixed-width cell."""
     return fg(color) + fit(text, width)
+
+
+def session_cell(name: str, color, related: bool, width: int) -> str:
+    """Session name prefixed by a gold star (related) or a space (aligns the rest)."""
+    marker = (fg(C_STAR) + STAR_GLYPH) if related else " "
+    return marker + fg(color) + fit(name, width - 1)
 
 
 def project_cell(project: str, branch, width: int) -> str:
@@ -485,7 +514,8 @@ def render_menu(term_w: int) -> str:
     return bg(BG_MENU) + text + " " * pad + RESET
 
 
-def render(sessions: list, selected: int, warnings: list) -> None:
+def render(sessions: list, selected: int, warnings: list,
+           current_session: str = "", hover=None) -> None:
     try:
         size   = os.get_terminal_size()
         term_w = size.columns
@@ -509,16 +539,24 @@ def render(sessions: list, selected: int, warnings: list) -> None:
 
     if visible:
         for i, s in enumerate(visible):
-            is_sel = (i == selected)
+            is_sel   = (i == selected)
+            is_hover = (i == hover)
             row_parts = []
-            if is_sel:
+            if is_sel and is_hover:
+                row_parts.append(bg(BG_SELECTED_HOVER))
+            elif is_sel:
                 row_parts.append(bg(BG_SELECTED))
+            elif is_hover:
+                row_parts.append(bg(BG_HOVER))
+            if is_sel:
                 row_parts.append(fg(C_BRIGHT) + "▶ ")
             else:
                 row_parts.append(fg(C_DIM) + "  ")
             sess_color = SRC_COLOR.get(s.get("source", ""), C_BRIGHT)
+            related    = bool(current_session) and \
+                         s["tmux_session"] == current_session
             cells = [
-                cell(s["tmux_session"],     sess_color,                col_s),
+                session_cell(s["tmux_session"], sess_color, related,  col_s),
                 project_cell(s["project_name"], s["branch"],           col_p),
                 cell(s["short_dir"],        C_NORMAL,                  col_d),
                 cell(s["status"],           status_color(s["status"]), col_st),
@@ -544,25 +582,51 @@ def render(sessions: list, selected: int, warnings: list) -> None:
     sys.stdout.flush()
 
 
-# ── Keyboard ──────────────────────────────────────────────────────────────────
+# ── Keyboard / mouse ──────────────────────────────────────────────────────────
 
-def read_key(fd: int, timeout: float) -> str:
+def parse_mouse(seq: str):
+    """Parse an SGR mouse body like '0;34;12M' → ('MOUSE', button, x, y, final).
+
+    `final` is 'M' for press/motion, 'm' for release. Returns None on garbage.
+    """
+    try:
+        b, x, y = (int(p) for p in seq[:-1].split(";"))
+    except ValueError:
+        return None
+    return ("MOUSE", b, x, y, seq[-1])
+
+
+def read_char(fd: int, timeout: float):
     rlist, _, _ = select.select([fd], [], [], timeout)
     if not rlist:
+        return None
+    return os.read(fd, 1).decode("utf-8", errors="replace")
+
+
+def read_key(fd: int, timeout: float):
+    ch = read_char(fd, timeout)
+    if ch is None:
         return "TIMEOUT"
-    ch = os.read(fd, 1).decode("utf-8", errors="replace")
     if ch != "\x1b":
         return ch
-    rlist2, _, _ = select.select([fd], [], [], 0.05)
-    if not rlist2:
-        return "ESC"
-    ch2 = os.read(fd, 1).decode("utf-8", errors="replace")
+    ch2 = read_char(fd, 0.05)
     if ch2 != "[":
         return "ESC"
-    rlist3, _, _ = select.select([fd], [], [], 0.05)
-    if not rlist3:
+    ch3 = read_char(fd, 0.05)
+    if ch3 is None:
         return "ESC"
-    return "ESC[" + os.read(fd, 1).decode("utf-8", errors="replace")
+    if ch3 == "<":
+        # SGR mouse: read the rest of the sequence up to its 'M'/'m' terminator.
+        seq = ""
+        while True:
+            c = read_char(fd, 0.05)
+            if c is None:
+                return "IGNORE"
+            seq += c
+            if c in ("M", "m"):
+                break
+        return parse_mouse(seq) or "IGNORE"
+    return "ESC[" + ch3
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -578,19 +642,23 @@ def main() -> None:
     def restore():
         try:
             termios.tcsetattr(fd, termios.TCSADRAIN, saved)
-            sys.stdout.write(SHOW_CUR + "\r\n")
+            sys.stdout.write(MOUSE_OFF + SHOW_CUR + "\r\n")
             sys.stdout.flush()
         except Exception:
             pass
 
     sessions, warnings = [], []
     selected    = 0
+    hover       = None   # body-row index under the mouse, or None
     switch_to   = None   # set when user picks a session to switch to
+    current     = current_tmux_session()
 
     try:
         tty.setraw(fd)
+        sys.stdout.write(MOUSE_ON)
+        sys.stdout.flush()
         sessions, warnings = load_sessions()
-        render(sessions, selected, warnings)
+        render(sessions, selected, warnings, current, hover)
 
         while True:
             key = read_key(fd, REFRESH_SECS)
@@ -598,22 +666,47 @@ def main() -> None:
             if key in ("TIMEOUT", "r"):
                 sessions, warnings = load_sessions()
                 selected = min(selected, max(0, len(sessions) - 1))
-                render(sessions, selected, warnings)
+                if hover is not None and hover >= len(sessions):
+                    hover = None
+                render(sessions, selected, warnings, current, hover)
                 continue
 
             if key in ("q", "\x03", "ESC"):
                 break
+
+            # Mouse: hover brightens a row; a click selects it (or switches if it
+            # is already the highlighted row). Row i renders on terminal line i+2
+            # (line 1 is the header), so the body index is y-2.
+            if isinstance(key, tuple) and key[0] == "MOUSE":
+                _, b, _x, y, final = key
+                if not sessions or final != "M":
+                    continue
+                idx   = y - 2
+                valid = 0 <= idx < len(sessions)
+                if b & 32:                          # any-motion → hover
+                    new_hover = idx if valid else None
+                    if new_hover != hover:
+                        hover = new_hover
+                        render(sessions, selected, warnings, current, hover)
+                elif (b & 0b1100011) == 0 and valid:   # plain left-button press
+                    hover = idx
+                    if idx == selected:
+                        switch_to = sessions[idx]["tmux_session"]
+                        break
+                    selected = idx
+                    render(sessions, selected, warnings, current, hover)
+                continue
 
             if not sessions:
                 continue
 
             if key in ("j", "ESC[B"):       # down
                 selected = (selected + 1) % len(sessions)
-                render(sessions, selected, warnings)
+                render(sessions, selected, warnings, current, hover)
 
             elif key in ("k", "ESC[A"):     # up
                 selected = (selected - 1) % len(sessions)
-                render(sessions, selected, warnings)
+                render(sessions, selected, warnings, current, hover)
 
             elif key in ("\r", "\n", "l", "ESC[C"):   # enter / l / →
                 switch_to = sessions[selected]["tmux_session"]
