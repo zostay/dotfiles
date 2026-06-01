@@ -64,36 +64,47 @@ label_for() {
 while true; do
     run_choice "$next"
 
-    print
-    print -P "%F{244}── $(label_for "$next") exited ──%f"
-    print "  [c] claude     (default)"
-    print "  [o] codex"
-    print "  [s] shell"
-    print "  [x] close pane"
-    print -n "> "
+    # Menu loop: prompt for the next action. An unknown key redraws the menu
+    # rather than relaunching anything — only a valid choice `break`s out to
+    # run a command. (A bare `continue` here would jump to the top of the
+    # OUTER loop and re-run run_choice "$next", silently relaunching.)
+    while true; do
+        print
+        print -P "%F{244}── $(label_for "$next") exited ──%f"
+        print "  [c] claude     (default)"
+        print "  [o] codex"
+        print "  [s] shell"
+        print "  [x] close workon session"
+        print -n "> "
 
-    # Single-key read; Enter accepts default.
-    if ! read -k 1 choice; then
-        # stdin closed (pane killed underneath us) — give up cleanly.
-        exit 0
-    fi
-    print
+        # Drain any pending/typeahead or stray escape-sequence bytes so they
+        # can't be consumed as the menu choice. (-t 0 = non-blocking.) no_unset
+        # is active, so drain into a throwaway and guard the empty-input case.
+        while read -t 0 -k 1 _ 2>/dev/null; do :; done
 
-    case $choice in
-        c|C)        next=claude ;;
-        o|O)        next=codex ;;
-        s|S)        next=shell ;;
-        x|X)
-            # End the whole work session — shell, claude, and recon panes
-            # all go together. Target the pane explicitly so we don't depend
-            # on which session tmux considers "current".
-            if [[ -n "$TMUX_PANE" ]]; then
-                session=$(tmux display-message -p -t "$TMUX_PANE" '#S')
-                exec tmux kill-session -t "=$session"
-            fi
+        # Single-key read; Enter accepts default.
+        if ! read -k 1 choice; then
+            # stdin closed (pane killed underneath us) — give up cleanly.
             exit 0
-            ;;
-        $'\n'|"")   next=claude ;;
-        *)          next="$DEFAULT" ;;
-    esac
+        fi
+        print
+
+        case $choice in
+            c|C)        next=claude; break ;;
+            o|O)        next=codex;  break ;;
+            s|S)        next=shell;  break ;;
+            x|X)
+                # End the whole work session — shell, claude, and recon panes
+                # all go together. Target the pane explicitly so we don't depend
+                # on which session tmux considers "current".
+                if [[ -n "$TMUX_PANE" ]]; then
+                    session=$(tmux display-message -p -t "$TMUX_PANE" '#S')
+                    exec tmux kill-session -t "=$session"
+                fi
+                exit 0
+                ;;
+            $'\n'|"")   next=claude; break ;;
+            *)          continue ;;   # unknown key -> redraw menu, do NOT relaunch
+        esac
+    done
 done
