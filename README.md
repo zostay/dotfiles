@@ -69,7 +69,9 @@ monitor — a unified dashboard layered over
   SQLite state + a tmux pane scan) into one alphabetized list, color-coded
   by source. `j`/`k`/arrows navigate, `Enter` switches to the selected
   session, `n` jumps to the next agent waiting for input, and it
-  auto-refreshes every 5 s.
+  auto-refreshes every 5 s. The current session is starred, a status of
+  "waiting for input" is colored red, and you can hover/click rows with the
+  mouse to select and switch.
 - **Status line**: every live tmux session is a clickable "tab" (rendered
   by `bin/work-status`); the current one is highlighted.
 
@@ -165,11 +167,14 @@ prints:
       [c] claude    (default)
       [o] codex
       [s] shell
-      [x] close pane (kills the whole session)
+      [x] close workon session
 
 Press one key. Enter accepts the default (`claude`). Choosing `[x]` from
 either pane tears down the *entire* session — shell, claude, and sessions —
-not just that pane.
+not just that pane; with `detach-on-destroy off` the client then lands in
+another live session. Unknown keys redraw the menu instead of relaunching,
+and any typeahead is drained before the read, so a stray byte (e.g. leftover
+mouse-tracking output from the `sessions` pane) can't be mistaken for a choice.
 
 ## Key bindings
 
@@ -180,7 +185,6 @@ Prefix is `C-j` (unchanged from before).
 | `Alt-Left` / `Alt-Right` | Cycle to previous / next session (no prefix)   |
 | `prefix g`             | Open `recon` in a popup (no session switch)      |
 | `prefix i`             | Jump to the next agent waiting for input         |
-| `prefix s`             | Interactive session picker                       |
 | `prefix W`             | Prompt for a `workon` argument and run it        |
 | `prefix X`             | Confirm + kill the current session               |
 | `MouseDown1Status`     | Click a session label in the status line to jump |

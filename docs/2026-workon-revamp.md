@@ -137,3 +137,42 @@ I need the following requirements to be met in the new system:
 
 Those are my basic requirements. Plan a solution that will achieve these goals
 using best in class tools and configuration with tmux as the centerpiece.
+
+## What Was Built
+
+The plan above became the `workon` system now living in `bin/`. Day-to-day usage
+and the full file inventory are in the repo README's "`workon`: per-project tmux
+layouts" section; this is the requirement-by-requirement record of how the vision
+was realized — and where it diverged.
+
+| Requirement (above) | How it was realized |
+|---|---|
+| Keep `workon`; don't require a new tab | `bin/workon` creates a *detached* tmux session and `switch-client`s the current client to it, so running `workon` from inside tmux swaps the view in place — no new Kitty tab. |
+| A persistent "tab bar" of all work, current one highlighted, clickable | The tmux `status-left` renders one clickable label per session via `bin/work-status`; the current session is highlighted, and `MouseDown1Status` → `bin/work-switch` jumps by index. `Alt-Left`/`Alt-Right` cycle sessions without the prefix. |
+| `<project>-<work>` naming; "prime" for the first/most-important work | `workon -w <work>` names the session `<project>-<work>`; the default `prime` stays bare (`<project>`). |
+| Split screen: Claude right, shell left | `bin/add-claude` builds it: shell left-top, claude on the right at full height. |
+| `/exit` Claude (and the shell) without closing the pane; menu to relaunch claude/codex/shell or close | `bin/work-supervisor` wraps both panes and shows the in-pane menu on exit; `[x]` closes the whole session. |
+| Third panel on the bottom-left running the monitor, auto-restarting | `bin/add-claude` adds a ~20% bottom-left pane running `bin/sessions-loop`, which restarts the monitor forever. |
+| (Beyond the original ask) Per-session environment | The `.workon.env` / `.workon.local.env` cascade (`bin/workon-env`) seeds the session environment so every pane inherits it. |
+
+### Where it diverged from the plan
+
+- **recon → a unified `sessions` monitor.** The plan leaned on
+  [recon](https://github.com/gavraz/recon) as the dashboard. recon's limitation
+  (jumping to a session exits recon and replaces the tab) and its Claude-only
+  scope pushed the design to `bin/sessions`, a custom Python TUI that *uses*
+  `recon json` as its Claude data source but adds: live Codex sessions (via the
+  Codex SQLite state + a ppid walk over tmux panes), an alphabetized list
+  color-coded by source, a starred current session, a red "waiting for input"
+  status, mouse hover/click, and in-pane navigation (`j`/`k`/`Enter`/`n`) that
+  switches the client without tearing the pane down. recon is still installed and
+  still backs the `prefix g` popup and `prefix i` next-agent jump.
+- **Codex is in, not deferred.** The plan listed Codex support as out-of-scope;
+  the monitor and the supervisor menu both handle it now.
+- **Worktree integration (new).** `workon -w` creates a git worktree at
+  `<project>-worktrees/<work>` and anchors Claude there via the `WorktreeCreate`
+  hook (`bin/work-worktree-hook`), so a worktree session isn't filed back under
+  the main checkout.
+- **Clean teardown.** `detach-on-destroy off` plus a `session-closed` hook means
+  closing the last session kills the tmux server so the next `workon` cold-starts;
+  closing one of several drops the client into another live session.

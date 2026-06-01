@@ -66,6 +66,22 @@ __prepend_paths "$HOME/.cargo/bin"   # or __append_paths, __remove_path
 
 These wrappers (`zsh/functions/paths`) operate on zsh's `path` array, only add directories that exist, and de-dup. They are unset by `99-finalize`, so any file numbered ≥99 cannot use them.
 
+## The `workon` development environment
+
+`bin/workon <project>` creates (or switches to) a per-project tmux session with a 3-pane coding layout. Because `bin/` is symlinked to `~/bin`, editing any of these scripts updates the live command immediately — no `./install.sh` re-run is needed. The user-facing docs live in the README's "`workon`: per-project tmux layouts" section; this is the orientation for agents working *on* the scripts.
+
+**Layout** (`bin/add-claude` builds it in window 0): shell (`zsh`) left-top, `claude` on the right at full height, and `bin/sessions` (a Python TUI monitor) in a ~20% bottom-left pane kept alive by `bin/sessions-loop`. The shell and claude panes are wrapped by `bin/work-supervisor`.
+
+**`bin/work-supervisor`** keeps a pane alive after its command exits and shows an in-pane menu (`[c]laude / [o]codex / [s]hell / [x] close workon session`). Structural gotcha: the menu prompt runs in an **inner** `while` loop, and that matters. A `continue` in the inner loop redraws the menu; a `continue` at the *outer* loop re-runs `run_choice "$next"` and silently relaunches the last command. So unknown keys must `continue` the inner loop and valid choices `break` out of it — never collapse the two loops. `[x]` runs `exec tmux kill-session` to tear down the whole session; with `detach-on-destroy off` the client then lands in another session. Typeahead is drained (`read -t 0`) before each menu read so stray bytes (e.g. leftover mouse-tracking output from `sessions`) aren't read as a choice.
+
+**Session creation** (`bin/workon`): resolves the project dir (`~/projects/<name>`, then `$GOPATH/src/github.com/<name>`, then `$PWD/<name>`), pins the new *detached* session to the client's real dimensions so percentage splits resolve, seeds the session environment from the `.workon.env` cascade (`bin/workon-env`, `$HOME` → session dir, `.workon.local.env` wins), then `switch-client`s to it. Re-running `workon` for an existing session just switches — setup never runs twice. **Leave the switch/resume path alone** when changing menu behavior; the two are independent.
+
+**Worktrees** (`workon -w <work>`): names the session `<project>-<work>` and uses a worktree at `<project>-worktrees/<work>` (`bin/work-worktree`). The supervisor launches `claude -w <work>` so Claude's `WorktreeCreate` hook (`bin/work-worktree-hook`) files the session under the worktree instead of chdir'ing back to the main checkout. The default `prime` work is *not* a worktree.
+
+**`bin/sessions`** merges Claude sessions (via `recon json`) and Codex sessions (via the Codex SQLite state + a ppid walk over tmux panes) into one list. It enables raw mode + mouse tracking (`\033[?1003h\033[?1006h`) and restores the terminal (termios + `\033[?1003l\033[?1006l\033[?25h`) in a `finally` block on exit — if that restore is ever bypassed, leftover escape bytes leak into the adjacent pane's stdin. `j`/`k`/arrows navigate, `Enter`/click switches sessions, `n` jumps to the next input-waiting agent.
+
+**tmux glue** (`tmux.conf.tmpl`): `status-left` renders clickable session "tabs" via `bin/work-status` (a click → `bin/work-switch` by 0-based index, since tmux caps range identifiers at 15 chars); `detach-on-destroy off` switches a client elsewhere when its session is destroyed; the `session-closed` hook kills the server once the last session closes so the next `workon` cold-starts. These three are intentional and load-bearing — don't "simplify" them away.
+
 ## Repository layout notes
 
 - `bin/` is symlinked verbatim to `~/bin`. Anything dropped here becomes a user command.
