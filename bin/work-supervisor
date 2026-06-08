@@ -94,7 +94,7 @@ while true; do
             o|O)        next=codex;  break ;;
             s|S)        next=shell;  break ;;
             x|X)
-                # End the whole work session — shell, claude, and recon panes
+                # End the whole work session — shell, claude, and sessions panes
                 # all go together. Target the pane explicitly so we don't depend
                 # on which session tmux considers "current".
                 if [[ -n "$TMUX_PANE" ]]; then

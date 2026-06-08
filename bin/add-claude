@@ -9,7 +9,7 @@
 #   | shell     | claude    |
 #   +-----------+ (full     |
 #   | pane 2    |  height)  |
-#   | recon     |           |
+#   | sessions  |           |
 #   +-----------+-----------+
 #
 # Pane 0 (shell) is expected to already exist; workon creates it via
@@ -35,7 +35,7 @@ fi
 # Right side: Claude under the supervisor so /exit drops to the menu.
 tmux split-window -h -t "$SESSION_NAME:0.0" -c "$SESSION_DIR" "$sup_cmd"
 
-# Bottom-left: recon, ~20% of the left column, auto-restarted. This relies
+# Bottom-left: the sessions monitor, ~20% of the left column, auto-restarted. Relies
 # on workon having created the session at the client's real dimensions
 # (via tmux new-session -x/-y) so the percentage resolves correctly.
 tmux split-window -v -t "$SESSION_NAME:0.0" -l 20% \

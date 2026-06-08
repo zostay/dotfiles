@@ -114,7 +114,7 @@ else
         # Resolve the per-session env cascade (.workon.env / .workon.local.env
         # from $HOME down to the session dir). Sets become `-e KEY=VAL` on the
         # session, which tmux seeds into the session environment so every pane
-        # (shell, claude, recon, editor, and ad-hoc splits) inherits them.
+        # (shell, claude, sessions, editor, and ad-hoc splits) inherits them.
         env_set_args=() ; env_unset_keys=()
         while IFS= read -r line; do
             [[ -z "$line" ]] && continue
@@ -138,7 +138,7 @@ else
             -c "$WORK_DIR" -s "$SESSION_NAME" "$sup0"
 
         # Strip unset vars from the session environment so panes created below
-        # (claude, recon, editor) don't inherit them.
+        # (claude, sessions, editor) don't inherit them.
         for k in "${env_unset_keys[@]}"; do
             tmux set-environment -t \="$SESSION_NAME" -r "$k"
         done
