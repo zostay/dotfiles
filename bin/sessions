@@ -28,10 +28,10 @@ COL_MODEL   = 12
 COL_CONTEXT = 12
 COL_LAST    = 11
 
-REFRESH_SECS  = 5.0
-CODEX_STATE   = os.path.expanduser("~/.codex/state_5.sqlite")
-CODEX_LOGS    = os.path.expanduser("~/.codex/logs_2.sqlite")
-CLAUDE_PROJS  = os.path.expanduser("~/.claude/projects")
+REFRESH_SECS       = 5.0
+CODEX_STATE        = os.path.expanduser("~/.codex/state_5.sqlite")
+CODEX_LOGS         = os.path.expanduser("~/.codex/logs_2.sqlite")
+CLAUDE_DEFAULT_CFG = os.path.expanduser("~/.claude")
 
 # Context window per model family (tokens). Used for the "Nk / Mk" display and
 # the usage ratio that colors the CONTEXT column. Defaults to 200k when unknown;
@@ -88,8 +88,6 @@ SRC_COLOR = {
     "claude_bambee":  C_SRC_CLAUDE_BAMBEE,
     "codex":          C_SRC_CODEX,
 }
-
-BAMBEE_PREFIX = os.path.expanduser("~/projects/bambee") + "/"
 
 # Status colors
 C_STATUS = {
@@ -272,21 +270,86 @@ def owning_pane(pid: int, ppid_map: dict, pane_info: dict):
     return None
 
 
-# ── Claude sessions (via JSONL transcripts) ───────────────────────────────────
+# ── Claude sessions (via per-pid registry + JSONL transcripts) ────────────────
+#
+# Each running `claude` process is one session. Claude records authoritative
+# per-process state in <config_dir>/sessions/<pid>.json — sessionId (→ the exact
+# transcript), cwd, and a live status (busy/idle/shell). The config dir defaults
+# to ~/.claude but per-client setups (e.g. bambee) point CLAUDE_CONFIG_DIR
+# elsewhere, so both the registry and transcripts live under that dir, not
+# ~/.claude. We therefore key on the process, learn its config dir from the
+# environment, then read its registry and transcript.
 
-def jsonl_for_cwd(cwd: str):
-    """Newest transcript whose own `cwd` matches `cwd`, or None.
+# Claude's own per-process status → our status vocabulary.
+REG_STATUS = {"busy": "Running", "idle": "Idle", "shell": "Idle"}
 
-    Claude stores transcripts under ~/.claude/projects/<mangled>/ where <mangled>
-    is the cwd with '/' and '.' turned into '-'. Mangling is lossy (existing '-'
-    collide), so we verify the candidate's recorded cwd before trusting it.
-    """
-    if not cwd:
+
+def is_claude_cmd(cmd: str) -> bool:
+    # The Claude Code CLI is bare "claude" (optionally with args). Exclude the
+    # Claude.app desktop helper, which carries a full /Applications/... path.
+    return cmd == "claude" or cmd.startswith("claude ")
+
+
+def claude_config_dirs(pids: list) -> dict:
+    """{pid: CLAUDE_CONFIG_DIR} for the given pids, from their environment.
+
+    A session under a non-default config dir writes its registry and transcripts
+    there, so we must learn each process's config dir to find its state."""
+    res = {}
+    if not pids:
+        return res
+    cmd = ["ps", "eww", "-o", "pid=,command="]
+    for p in pids:
+        cmd += ["-p", str(p)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+    except Exception:
+        return res
+    for line in r.stdout.splitlines():
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        try:
+            pid = int(parts[0])
+        except ValueError:
+            continue
+        cfg = CLAUDE_DEFAULT_CFG
+        for tok in parts[1].split():
+            if tok.startswith("CLAUDE_CONFIG_DIR="):
+                cfg = tok.split("=", 1)[1]
+                break
+        res[pid] = cfg
+    return res
+
+
+def read_session_registry(cfg: str, pid: int):
+    """Claude's <config_dir>/sessions/<pid>.json → dict, or None."""
+    try:
+        with open(os.path.join(cfg, "sessions", f"{pid}.json")) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
         return None
-    mangled = cwd.replace("/", "-").replace(".", "-")
-    proj    = os.path.join(CLAUDE_PROJS, mangled)
-    files   = sorted(glob.glob(os.path.join(proj, "*.jsonl")),
-                     key=os.path.getmtime, reverse=True)
+
+
+def mangle_cwd(cwd: str) -> str:
+    """cwd → Claude's project-dir name (slashes and dots become dashes)."""
+    return (cwd or "").replace("/", "-").replace(".", "-")
+
+
+def transcript_for(cfg: str, cwd: str, session_id: str):
+    """Exact transcript path for a session id, or None."""
+    if not session_id:
+        return None
+    p = os.path.join(cfg, "projects", mangle_cwd(cwd), f"{session_id}.jsonl")
+    return p if os.path.exists(p) else None
+
+
+def newest_transcript(cfg: str, cwd: str):
+    """Fallback when the session id is unknown: newest transcript in the project
+    dir whose recorded cwd matches (mangling is lossy, so verify)."""
+    proj  = os.path.join(cfg, "projects", mangle_cwd(cwd))
+    files = sorted(glob.glob(os.path.join(proj, "*.jsonl")),
+                   key=os.path.getmtime, reverse=True)
     for f in files:
         if jsonl_cwd(f) == cwd:
             return f
@@ -366,16 +429,17 @@ def ctx_window(model: str, used: int = 0) -> int:
     return CTX_WINDOW_DEFAULT
 
 
-def claude_status(pane_target: str, last_turn: str) -> tuple:
-    """(status, waiting) for a Claude pane.
+def claude_status(reg_status: str, pane_target: str, last_turn: str,
+                  has_transcript: bool) -> tuple:
+    """(status, waiting) for a Claude session.
 
-    Coarse state comes from the transcript: a trailing user/tool turn with no
-    later assistant reply means the agent is still working; otherwise it has
-    finished its turn. A single capture-pane upgrades the finished state to the
-    red "Input" state when a permission/attention prompt is on screen.
+    The registry status Claude writes for itself is the primary signal. A single
+    capture-pane upgrades a non-running session to the red "Input" state when a
+    permission prompt is on screen (the registry doesn't distinguish that). With
+    no registry status we fall back to the transcript, or "New" if there's none.
     """
-    running = (last_turn == "user")
-    if pane_target:
+    base = REG_STATUS.get(reg_status or "", "")
+    if base != "Running" and pane_target:
         try:
             cap = subprocess.run(
                 ["tmux", "capture-pane", "-t", pane_target, "-p"],
@@ -387,46 +451,57 @@ def claude_status(pane_target: str, last_turn: str) -> tuple:
             return "Running", False
         if "do you want" in cap or "❯ 1." in cap or "│ ❯" in cap:
             return "Input", True
-    return ("Running", False) if running else ("Idle", False)
+    if not has_transcript:
+        return "New", False
+    if base:
+        return base, False
+    return ("Running", False) if last_turn == "user" else ("Idle", False)
 
 
 def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
-    if not os.path.isdir(CLAUDE_PROJS):
+    claude_pids = [pid for pid, _ppid, cmd in procs if is_claude_cmd(cmd)]
+    if not claude_pids:
         return []
+    cfgs = claude_config_dirs(claude_pids)
 
     out  = []
     seen = set()
-    for pid, _ppid, cmd in procs:
-        # The Claude Code CLI shows up in ps as bare "claude" (optionally with
-        # args). Exclude the Claude.app desktop helper, which carries a full
-        # /Applications/... path.
-        if cmd != "claude" and not cmd.startswith("claude "):
-            continue
+    for pid in claude_pids:
         owner = owning_pane(pid, ppid_map, pane_info)
         if not owner:
             continue
-        tmux_session, cwd, pane_target = owner
+        tmux_session, pane_cwd, pane_target = owner
 
-        jsonl = jsonl_for_cwd(cwd)
-        if not jsonl or jsonl in seen:
-            continue
-        seen.add(jsonl)
+        cfg = cfgs.get(pid, CLAUDE_DEFAULT_CFG)
+        reg = read_session_registry(cfg, pid) or {}
+        sid = reg.get("sessionId")
+        cwd = reg.get("cwd") or pane_cwd
 
-        info  = parse_claude_jsonl(jsonl)
+        # One row per session id; a resumed session can briefly have two pids.
+        if sid:
+            if sid in seen:
+                continue
+            seen.add(sid)
+
+        jsonl = transcript_for(cfg, cwd, sid) or newest_transcript(cfg, cwd)
+        info  = (parse_claude_jsonl(jsonl) if jsonl
+                 else {"model": "", "usage": None, "ts": None, "last_turn": ""})
+
         model = info["model"]
-
-        used = 0
+        used  = 0
         if info["usage"]:
             u = info["usage"]
             used = (u.get("input_tokens", 0)
                     + u.get("cache_read_input_tokens", 0)
                     + u.get("cache_creation_input_tokens", 0))
         window = ctx_window(model, used)
-        ratio  = used / window if window else None
+        ratio  = used / window if (window and used) else None
 
-        status, waiting = claude_status(pane_target, info["last_turn"])
+        status, waiting = claude_status(
+            reg.get("status"), pane_target, info["last_turn"], bool(jsonl))
 
-        source = "claude_bambee" if cwd.startswith(BAMBEE_PREFIX) else "claude_default"
+        # The per-client config dir (e.g. bambee) drives the SESSION color.
+        source = "claude_bambee" if "bambee" in cfg.lower() else "claude_default"
         out.append({
             "type":          "claude",
             "source":        source,
@@ -438,7 +513,7 @@ def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
             "model_display": pretty_model(model),
             "context_str":   f"{used // 1000}k/{window // 1000}k",
             "ratio":         ratio,
-            "ts":            info["ts"],
+            "ts":            info["ts"] or reg.get("updatedAt"),
             "waiting":       waiting,
         })
     return out

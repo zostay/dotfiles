@@ -95,3 +95,27 @@ manage a Claude `settings.json`, so it adds install surface + stale-file cleanup
 ~Half a day, ~120 lines of Python closely mirroring `fetch_codex()`. No new dependencies, no
 install-pipeline changes. The schema boundary at `fetch_claude()` means the ~500 lines of
 rendering/input code never change. Genuinely novel work is just `claude_status()`.
+
+## Follow-up: process-centric via Claude's session registry
+
+The first cut was *transcript-centric* — find the newest `*.jsonl` under the cwd-mangled project
+dir. That had three real bugs, exposed by two `reading-list` sessions showing as zero:
+
+1. **Wrong config dir.** Per-client sessions run with `CLAUDE_CONFIG_DIR` (e.g.
+   `~/projects/bambee/.claude`); their registry *and* transcripts live there, not under `~/.claude`.
+   Mangling `~/.claude/projects` found nothing for them — and worse, for cwds that also had a
+   default-config transcript it silently read the *wrong* one (wrong model/tokens).
+2. **Brand-new sessions** have no transcript yet, so they were invisible (recon showed them "New").
+3. **Two sessions in one cwd** both mapped to the same newest transcript; the dedup dropped one.
+
+Fix: key on the **process**, not the transcript. Claude maintains an authoritative registry at
+`<config_dir>/sessions/<pid>.json` — `{ pid, sessionId, cwd, status, updatedAt, ... }`. So:
+
+- Enumerate live `claude` pids (one row each → New sessions and same-cwd siblings both appear).
+- Read each pid's `CLAUDE_CONFIG_DIR` from its environment (`ps eww`); default `~/.claude`.
+- `read_session_registry(cfg, pid)` → `sessionId` + `cwd` + `status`.
+- `transcript_for(cfg, cwd, sessionId)` is now an **exact** path (no mtime guessing); a
+  `newest_transcript()` cwd-match remains only as a fallback when the registry is missing.
+- Status comes from the registry (`busy`→Running, `idle`→Idle, `shell`→Idle), with the
+  `capture-pane` upgrade kept only for the red "Input"/permission state, and "New" when a pid has
+  no transcript. The per-client config dir (not a cwd prefix) drives the bambee SESSION color.
