@@ -10,6 +10,7 @@ tokens, branch, and status.
 import glob
 import json
 import os
+import re
 import select
 import sqlite3
 import subprocess
@@ -429,30 +430,65 @@ def ctx_window(model: str, used: int = 0) -> int:
     return CTX_WINDOW_DEFAULT
 
 
+# A live Claude turn renders a spinner line carrying an elapsed timer and a
+# streaming token count — "✻ Gesticulating… (3m 1s · ↓ 11.5k tokens)" — or, on
+# some turns, an "esc to interrupt"/"esc to cancel" hint. The verb animates and
+# a *completed* turn leaves a past-tense summary ("✻ Brewed for 36s") with no
+# ellipsis, so we key on the live payload — the in-progress ellipsis followed by
+# a token count, or the interrupt hint — never the spinner glyph itself.
+_SPINNER_RE = re.compile(r"esc to interrupt|esc to cancel|…[^\n]*\btokens?\b", re.I)
+
+# A live attention prompt (permission / plan / trust) renders a numbered select
+# with the cursor on an option: "❯ 1. Yes". The bare "❯" composer cursor shown
+# while idle carries no digit, so requiring "❯ <n>." avoids matching it. The
+# insert-mode footer ("-- INSERT --") only renders while the composer is active,
+# so its absence confirms a real prompt has replaced the composer.
+_SELECT_RE = re.compile(r"❯\s*\d+\.")
+
+
+def _pane_tail(pane_target: str, lines: int = 12) -> str:
+    """Lowercased text of the last `lines` non-empty rows of a pane, or "".
+
+    The state signals (spinner, prompt, insert footer) all render in this bottom
+    region; restricting to it keeps older scrollback prose from being misread as
+    a live prompt."""
+    try:
+        cap = subprocess.run(
+            ["tmux", "capture-pane", "-t", pane_target, "-p"],
+            capture_output=True, text=True, timeout=2,
+        ).stdout
+    except Exception:
+        return ""
+    rows = [ln for ln in cap.splitlines() if ln.strip()]
+    return "\n".join(rows[-lines:]).lower()
+
+
 def claude_status(reg_status: str, pane_target: str, last_turn: str,
                   has_transcript: bool) -> tuple:
     """(status, waiting) for a Claude session.
 
-    The registry status Claude writes for itself is the primary signal. A single
-    capture-pane upgrades a non-running session to the red "Input" state when a
-    permission prompt is on screen (the registry doesn't distinguish that). With
-    no registry status we fall back to the transcript, or "New" if there's none.
+    The live pane is ground truth for what Claude is doing *right now*, so it is
+    consulted first: a streaming spinner means Running, a numbered attention
+    prompt means Input, anything else Idle. Claude's self-reported registry
+    status is only a fallback — older versions (≤2.1.169, no `statusUpdatedAt`)
+    write "busy" and never flip it back to "idle", which otherwise pins a
+    finished session to Running forever. The registry's explicit "waiting" is
+    trusted up front: that state is unambiguous and its prompt may scroll
+    off-pane.
     """
-    base = REG_STATUS.get(reg_status or "", "")
-    if base != "Running" and pane_target:
-        try:
-            cap = subprocess.run(
-                ["tmux", "capture-pane", "-t", pane_target, "-p"],
-                capture_output=True, text=True, timeout=2,
-            ).stdout.lower()
-        except Exception:
-            cap = ""
-        if "esc to interrupt" in cap or "esc to cancel" in cap:
+    if (reg_status or "") == "waiting":
+        return "Input", True
+    tail = _pane_tail(pane_target) if pane_target else ""
+    if tail:
+        if _SPINNER_RE.search(tail):
             return "Running", False
-        if "do you want" in cap or "❯ 1." in cap or "│ ❯" in cap:
+        if _SELECT_RE.search(tail) and "-- insert --" not in tail:
             return "Input", True
+        return "Idle", False
+    # No pane to read — fall back to the registry, then the transcript.
     if not has_transcript:
         return "New", False
+    base = REG_STATUS.get(reg_status or "", "")
     if base:
         return base, False
     return ("Running", False) if last_turn == "user" else ("Idle", False)
