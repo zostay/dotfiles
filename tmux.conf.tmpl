@@ -21,6 +21,12 @@ set -g status-interval 2
 
 set -s escape-time 0
 
+# Let escape sequences from programs inside tmux reach the real terminal.
+# Mitigates Claude Code's Ink-TUI redraw/cursor-desync bugs under tmux
+# (e.g. cursor jumping to the top of the screen after /clear).
+# See anthropics/claude-code#37283, #29937.
+set -g allow-passthrough on
+
 set-option -g status-bg colour33
 
 set-option -g pane-border-style fg=colour237

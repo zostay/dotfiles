@@ -9,6 +9,11 @@ fi
 # used. `__prepend_paths` no-ops on missing directories and dedupes.
 __prepend_paths "$HOME/.cargo/bin" "$HOME/.local/bin"
 
+# Reduce Claude Code's full-viewport redraws, which corrupt the terminal
+# display under tmux (cursor desync, flicker). Pairs with `allow-passthrough`
+# in tmux.conf. See anthropics/claude-code#37283, #29937.
+export CLAUDE_CODE_NO_FLICKER=1
+
 alias claude-home="CLAUDE_CONFIG_DIR=~/.claude-home claude"
 
 # vim: ft=zsh
