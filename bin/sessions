@@ -199,7 +199,7 @@ def fmt_tokens(n: int) -> str:
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M tok"
     if n >= 1_000:
-        return f"{n // 1_000}k tok"
+        return f"{n // 1_000}K tok"
     return f"{n} tok"
 
 
@@ -578,13 +578,14 @@ def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
                     + u.get("cache_creation_input_tokens", 0))
         window = ctx_window(model)
         if window:
-            context_str = f"{used // 1000}k/{window // 1000}k"
+            # Right-justify the used side so the "/" lines up down the column.
+            context_str = f"{used // 1000:>4}K/{window // 1000}K"
             ratio       = used / window if used else None
             ctx_unknown = False
         else:
             # Window not in the table — show the raw count and flag it lavender
             # rather than inventing a denominator.
-            context_str = f"{used // 1000}k"
+            context_str = f"{used // 1000:>4}K"
             ratio       = None
             ctx_unknown = True
 
