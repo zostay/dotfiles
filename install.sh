@@ -89,6 +89,10 @@ echo "Installing dotfiles."
 
 link-file bin ~/bin
 
+# Model context-window table read by bin/sessions for the CONTEXT column.
+# Refreshed by the refresh-model-context-windows skill during weekly maintenance.
+link-file sessions/models.json $XDG_CONFIG_HOME/sessions/models.json
+
 link-file ackrc ~/.ackrc
 tmpl-link-file tmux.conf ~/.tmux.conf
 
