@@ -110,10 +110,13 @@ C_STATUS = {
     "Waiting": (235, 110, 110),   # red — Codex waiting on user input
 }
 
-# Context-usage colors (ratio = used / window)
-C_CTX_OK      = C_NORMAL
-C_CTX_WARN    = (235, 200,  90)
-C_CTX_OVER    = (235, 110, 110)
+# Context-usage gradient anchors (ratio = used / window). The CONTEXT column
+# interpolates pastel green (0%) → yellow (50%) → red (100%+); routing through a
+# yellow midpoint keeps the ramp clean (a direct green→red lerp muddies to brown).
+C_CTX_LOW     = (150, 210, 150)   # pastel green  — empty / low context
+C_CTX_MID     = (235, 210, 120)   # pastel yellow — ~50%
+C_CTX_HIGH    = (235, 120, 120)   # pastel red    — full / over 100%
+C_CTX_OK      = C_NORMAL          # gray — ratio unknown (Codex, or zero usage)
 C_CTX_UNKNOWN = (200, 150, 250)   # lavender — window unknown, showing raw N only
 
 # Backgrounds — selected and menu bars use these. Picked to stay visibly
@@ -798,16 +801,20 @@ def status_color(status: str):
     return C_STATUS.get(status, C_NORMAL)
 
 
+def _lerp_rgb(a, b, t):
+    """Linear blend between two (r,g,b) tuples; t in [0,1]."""
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
 def context_color(ratio, unknown=False):
     if unknown:
         return C_CTX_UNKNOWN
-    if ratio is None:
+    if ratio is None:          # no usage ratio to color (Codex rows, zero usage)
         return C_CTX_OK
-    if ratio > 1.0:
-        return C_CTX_OVER
-    if ratio > 0.5:
-        return C_CTX_WARN
-    return C_CTX_OK
+    r = max(0.0, min(1.0, ratio))   # clamp; >100% pins to the red anchor
+    if r <= 0.5:
+        return _lerp_rgb(C_CTX_LOW, C_CTX_MID, r / 0.5)
+    return _lerp_rgb(C_CTX_MID, C_CTX_HIGH, (r - 0.5) / 0.5)
 
 
 def fit(s: str, width: int) -> str:
