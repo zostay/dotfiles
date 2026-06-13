@@ -30,6 +30,11 @@ COL_CONTEXT = 12
 COL_LAST    = 11
 
 REFRESH_SECS       = 5.0
+
+# Path to this script, resolved through the ~/bin symlink so we stat the real
+# file in the dotfiles checkout. Used to self-restart when the script changes.
+SELF_PATH = os.path.realpath(__file__)
+
 CODEX_STATE        = os.path.expanduser("~/.codex/state_5.sqlite")
 CODEX_LOGS         = os.path.expanduser("~/.codex/logs_2.sqlite")
 CLAUDE_DEFAULT_CFG = os.path.expanduser("~/.claude")
@@ -928,6 +933,19 @@ def read_key(fd: int, timeout: float):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def self_mtime():
+    """mtime of this script (following the ~/bin symlink), or None if unreadable.
+
+    A new version of `sessions` should take over each workon monitor pane without
+    the user touching it. We can't reload Python in place, so on each refresh we
+    compare this against the value captured at startup; a change means exit
+    cleanly and let `sessions-loop` relaunch the fresh file."""
+    try:
+        return os.stat(SELF_PATH).st_mtime
+    except OSError:
+        return None
+
+
 def main() -> None:
     if not os.environ.get("TMUX"):
         print("sessions: must be run inside tmux", file=sys.stderr)
@@ -949,6 +967,7 @@ def main() -> None:
     hover       = None   # body-row index under the mouse, or None
     switch_to   = None   # set when user picks a session to switch to
     current     = current_tmux_session()
+    started_mtime = self_mtime()   # baseline for self-restart on script change
 
     try:
         tty.setraw(fd)
@@ -961,6 +980,11 @@ def main() -> None:
             key = read_key(fd, REFRESH_SECS)
 
             if key in ("TIMEOUT", "r"):
+                # Script changed on disk → exit so sessions-loop relaunches the
+                # new version. The finally below restores the terminal, so the
+                # fresh instance re-arms raw/mouse mode cleanly.
+                if self_mtime() not in (None, started_mtime):
+                    break
                 sessions, warnings = load_sessions()
                 selected = min(selected, max(0, len(sessions) - 1))
                 if hover is not None and hover >= len(sessions):
