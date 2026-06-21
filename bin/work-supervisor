@@ -41,9 +41,9 @@ run_choice() {
     case $1 in
         claude)
             if [[ -n "$WORKTREE" ]]; then
-                claude -w "$WORKTREE"
+                claude --chrome -w "$WORKTREE"
             else
-                claude
+                claude --chrome
             fi
             ;;
         codex)  codex ;;
