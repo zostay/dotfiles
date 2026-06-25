@@ -164,8 +164,9 @@ to `.gitignore` for secrets or machine-specific overrides.
 When the wrapped command in the shell or claude pane exits, the supervisor
 prints:
 
-      [c] claude    (default)
-      [o] codex
+      [c] Claude    (default)
+      [o] Codex     (not installed)
+      [p] Copilot
       [s] shell
       [x] close workon session
 
@@ -175,6 +176,15 @@ not just that pane; with `detach-on-destroy off` the client then lands in
 another live session. Unknown keys redraw the menu instead of relaunching,
 and any typeahead is drained before the read, so a stray byte (e.g. leftover
 mouse-tracking output from the `sessions` pane) can't be mistaken for a choice.
+
+The menu is configurable. Launchers whose backing binary isn't on `$PATH`
+render dimmed and `(not installed)`, and pressing their key does nothing — so
+a laptop with `copilot` but no `codex` shows the reverse of one with `codex`
+but no `copilot`, with no config change. To pick which launchers appear and in
+what order, set `WORK_SUPERVISOR_MENU` (space-separated tokens from `claude`,
+`codex`, `copilot`, `shell`) — e.g. via the `.workon.env` cascade:
+
+      WORK_SUPERVISOR_MENU="claude copilot shell"
 
 ## Key bindings
 
@@ -206,7 +216,11 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
   installs it via `cargo install --git ...` if it's missing.
 - `codex` on `$PATH` if you want the `[o]` menu option to work — Codex
   sessions also show up in `sessions` via `~/.codex/state_5.sqlite`.
+- `copilot` on `$PATH` for the `[p]` menu option (GitHub Copilot CLI).
 - `claude` on `$PATH` (already configured by `zsh/rc/85-claude`)
+
+  Any launcher missing from `$PATH` simply shows dimmed in the menu rather
+  than breaking it, so none of `codex`/`copilot` are hard requirements.
 
 ## Files behind it
 
@@ -215,7 +229,7 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 | `bin/workon`          | Entry point; resolves project + worktree, builds session |
 | `bin/add-claude`      | Creates the 3-pane layout in window 0                 |
 | `bin/add-editor`      | Adds the `edit` window when `-e` is passed            |
-| `bin/work-supervisor` | Relaunch loop + menu around shell/claude/codex        |
+| `bin/work-supervisor` | Relaunch loop + menu around shell/claude/codex/copilot |
 | `bin/sessions`        | Unified Claude + Codex session monitor (bottom-left pane) |
 | `bin/sessions-loop`   | Restart-`sessions`-forever wrapper                    |
 | `bin/recon-loop`      | Restart-recon-forever wrapper (superseded by `sessions-loop`) |

@@ -3,7 +3,15 @@
 # work-supervisor: keep a pane alive after the wrapped command exits.
 #
 # Runs the chosen command; when it exits, presents an in-pane menu to
-# relaunch claude / codex / a shell, or close the pane.
+# relaunch an agent (claude / codex / copilot), a shell, or close the pane.
+#
+# The menu is data-driven. CMD_* below is the registry of known launchers;
+# the MENU array picks which ones to show and in what order. Override the
+# order/set per-machine or per-project via the WORK_SUPERVISOR_MENU env var
+# (space-separated tokens, e.g. "claude copilot shell"), which the workon-env
+# cascade can set. Items whose backing binary isn't installed render dimmed
+# and are not selectable, so the menu reflects what's actually available on
+# this machine.
 
 emulate -L zsh
 setopt no_unset
@@ -23,6 +31,32 @@ while [[ $# -gt 0 ]]; do
         *)  echo "work-supervisor: unknown arg: $1" >&2; exit 2 ;;
     esac
 done
+
+# `zsh` is an alias for the shell launcher (workon passes --default=zsh).
+[[ "$DEFAULT" == zsh ]] && DEFAULT=shell
+
+# Registry of known launchers. For each token: the menu key, the display
+# label, and the binary whose presence on $PATH means "installed" (empty =
+# always available, e.g. the shell). To add a launcher, add a row here and a
+# case in run_choice; list its token in MENU (or WORK_SUPERVISOR_MENU) to show it.
+typeset -A CMD_KEY CMD_LABEL CMD_BIN
+CMD_KEY=(   claude c        codex o       copilot p         shell s )
+CMD_LABEL=( claude Claude   codex Codex   copilot Copilot   shell shell )
+CMD_BIN=(   claude claude   codex codex   copilot copilot   shell '' )
+
+# Which launchers to offer, in order. WORK_SUPERVISOR_MENU overrides the default.
+typeset -a MENU
+if [[ -n "${WORK_SUPERVISOR_MENU:-}" ]]; then
+    MENU=( ${(s: :)WORK_SUPERVISOR_MENU} )
+else
+    MENU=( claude codex copilot shell )
+fi
+
+is_installed() {
+    local bin="${CMD_BIN[$1]:-}"
+    [[ -z "$bin" ]] && return 0
+    command -v "$bin" >/dev/null 2>&1
+}
 
 # Pane 0 inherits the session environment that new-session created before
 # `tmux set-environment -r` could strip these, so clear them here. claude/codex/
@@ -46,21 +80,18 @@ run_choice() {
                 claude --chrome
             fi
             ;;
-        codex)  codex ;;
+        codex)     codex ;;
+        copilot)   copilot ;;
         shell|zsh) ${SHELL:-zsh} -l ;;
         *) return 1 ;;
     esac
 }
 
 label_for() {
-    case $1 in
-        claude) echo "Claude" ;;
-        codex)  echo "Codex" ;;
-        shell|zsh) echo "shell" ;;
-        *) echo "$1" ;;
-    esac
+    echo "${CMD_LABEL[$1]:-$1}"
 }
 
+typeset -A keymap
 while true; do
     run_choice "$next"
 
@@ -71,9 +102,24 @@ while true; do
     while true; do
         print
         print -P "%F{244}── $(label_for "$next") exited ──%f"
-        print "  [c] claude     (default)"
-        print "  [o] codex"
-        print "  [s] shell"
+
+        # Render the menu from MENU, building key->token for the *selectable*
+        # (installed) items only. Uninstalled launchers show dimmed and their
+        # key is left out of keymap, so pressing it just redraws.
+        keymap=()
+        for tok in "${MENU[@]}"; do
+            mkey="${CMD_KEY[$tok]:-}"
+            [[ -z "$mkey" ]] && continue   # unknown token in config -> skip
+            mlabel="${(r:9:)${CMD_LABEL[$tok]:-$tok}}"
+            mtag=""
+            [[ "$tok" == "$DEFAULT" ]] && mtag="(default)"
+            if is_installed "$tok"; then
+                keymap[$mkey]="$tok"
+                print -P "  [$mkey] $mlabel $mtag"
+            else
+                print -P "%F{240}  [$mkey] $mlabel (not installed)%f"
+            fi
+        done
         print "  [x] close workon session"
         print -n "> "
 
@@ -90,9 +136,6 @@ while true; do
         print
 
         case $choice in
-            c|C)        next=claude; break ;;
-            o|O)        next=codex;  break ;;
-            s|S)        next=shell;  break ;;
             x|X)
                 # End the whole work session — shell, claude, and sessions panes
                 # all go together. Target the pane explicitly so we don't depend
@@ -103,8 +146,15 @@ while true; do
                 fi
                 exit 0
                 ;;
-            $'\n'|"")   next=claude; break ;;
-            *)          continue ;;   # unknown key -> redraw menu, do NOT relaunch
+            $'\n'|"")   next="$DEFAULT"; break ;;
+            *)
+                # Map the pressed key (case-insensitively) to a selectable token.
+                sel="${keymap[${(L)choice}]:-}"
+                if [[ -n "$sel" ]]; then
+                    next="$sel"; break
+                fi
+                continue   # unknown/disabled key -> redraw menu, do NOT relaunch
+                ;;
         esac
     done
 done
