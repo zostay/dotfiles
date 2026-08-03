@@ -82,6 +82,31 @@ These wrappers (`zsh/functions/paths`) operate on zsh's `path` array, only add d
 
 **tmux glue** (`tmux.conf.tmpl`): `status-left` renders clickable session "tabs" via `bin/work-status` (a click → `bin/work-switch` by 0-based index, since tmux caps range identifiers at 15 chars); `detach-on-destroy off` switches a client elsewhere when its session is destroyed; the `session-closed` hook kills the server once the last session closes so the next `workon` cold-starts. These three are intentional and load-bearing — don't "simplify" them away.
 
+## YouTube Music rotation auth
+
+`bin/rotate-music` authenticates itself on every run — there is no separate login step. The shared logic lives in `bin/rotate_music_auth.py`, imported by both `rotate-music` and `rotate-music-login`.
+
+**The credential is single-use.** `acquire()` wakes the extension, waits for the native host to write `auth_file`, reads it, and **unlinks it before returning** — so it is on disk for well under a second and is gone before the first API call. `YTMusic` accepts a dict (`auth: str | JsonDict | None`), so nothing downstream needs the file, and nothing in ytmusicapi writes back to it for browser auth (only OAuth's `store_token` and `setup_browser` write, and neither is on this path). **Don't reintroduce a cached auth file** — re-authenticating costs about a second and keeps a password-and-2FA-bypassing credential off the disk.
+
+The one exception is `rotate-music-login --ask`, the manual fallback: it writes a persistent file because a human paste cannot be automated, and `acquire()` falls back to that file and deliberately leaves it in place. `rotate-music-login` is otherwise setup-and-diagnostics only (`--install`, or bare to check the pipeline end to end and discard the result).
+
+**Why the auth file only really needs `cookie`.** ytmusicapi recomputes `authorization` from the SAPISID cookie before *every* request (`ytmusic.py`, `headers` property). The stored `authorization` is a *type marker* only — `auth/auth_parse.py` sniffs it for the substring `SAPISIDHASH` to classify the file as browser auth. So the extension writes a placeholder there on purpose; it is not a stubbed-out TODO. `X-Goog-Visitor-Id` is fetched automatically when absent. The cookie must contain `__Secure-3PAPISID` (`helpers.py`, `sapisid_from_cookie`).
+
+**Why this needs a browser extension, and not something lighter.** 12 of the 16 cookies in a jar that actually authenticates — `__Secure-1PSID`, `__Secure-3PSID`, `LOGIN_INFO`, `SSID`, … — are **HttpOnly**. That rules out, permanently:
+
+- `document.cookie` / any content script, including Claude in Chrome's `javascript_tool`. It sees 4 of the 16, and not one of them is a session cookie. SAPISIDHASH is only a CSRF-style proof the caller can read SAPISID; it is *not* a substitute for the session cookie, so a jar scraped from JS authenticates as nobody.
+- A devtools/CDP session against the running browser. Chrome 136+ ignores `--remote-debugging-port` unless paired with a non-default `--user-data-dir`, specifically to stop cookie extraction — and a fresh `--user-data-dir` is a logged-out profile.
+
+`chrome.cookies` is the only interface that returns HttpOnly cookies, hence `chrome/rotate-music-auth/` (MV3, `cookies` permission, ID pinned to `bnadenigkfcpiclddcamdoeikmmkkjbp` by the manifest `key`). If someone "simplifies" this to `document.cookie`, it will appear to work — a file gets written, `__Secure-3PAPISID` is present — and then every API call 401s. `describe()` guards against exactly that by requiring an HttpOnly marker in the jar.
+
+**`host_permissions` must stay `https://*.youtube.com/*`.** Narrowing it to `music.youtube.com` looks tighter and silently breaks auth: Chrome filters `cookies.getAll` per-cookie against each cookie's *own* domain, so a `.youtube.com` cookie is checked as `https://youtube.com/`, which only the wildcard (which covers the apex) matches. Nearly the whole jar is domain-scoped, so the result would be a plausible-looking file that fails to authenticate.
+
+**The auth file is a live credential**, equivalent to the account's YouTube session with no password and no 2FA, kept in plaintext at mode 600 — a weaker tier than Chrome's own Keychain-encrypted, TCC-protected cookie store. That is why the extension writes **only on demand**: an earlier version kept it permanently fresh on a 15-minute alarm plus every `cookies.onChanged`, which maximised the exposure window for no benefit, and made every organic YTM page load a web-reachable trigger for a native-host spawn. The only automatic write is a tab carrying the exact `?rotate-music-auth=wake` query parameter, which `rotate-music-login` opens and the extension then closes. **Don't add a periodic refresh back.**
+
+**Handoff.** The extension can't write files, so it pipes headers to `bin/rotate-music-auth-host` (native messaging), which writes the auth file atomically at mode 600. Chrome spawns native hosts with a bare environment — no pyenv, so no PyYAML — which is why the host is **stdlib-only** and regexes `auth_file:` out of the YAML instead of parsing it. It must keep running on system Python (3.9).
+
+`rotate-music-login` (default) validates the file and, if missing/stale/`--force`, wakes the extension by opening a background YTM tab (`tabs.onUpdated` fires the refresh) and waits for the mtime to move. `--ask` keeps the old paste-a-cURL flow as a fallback. `--install` registers the native host into every Chrome/Canary/Chromium profile found and is re-run by `install.sh`; loading the unpacked extension stays a one-time manual step.
+
 ## Repository layout notes
 
 - `bin/` is symlinked verbatim to `~/bin`. Anything dropped here becomes a user command.

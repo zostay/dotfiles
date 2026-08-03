@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 from ytmusicapi import YTMusic
-from os.path import expanduser
+from os.path import expanduser, dirname, realpath
 import yaml
 import sys
 #import pprint
+
+sys.path.insert(0, dirname(realpath(__file__)))
+import rotate_music_auth as auth
 
 # Rotate Music Configuration goes here
 config_file = expanduser("~/.rotate-music.yaml")
@@ -23,7 +26,6 @@ if cfg["rotations"][rotation_name] is None:
     print("Rotation",rotation_name,"not found in configuration file.")
     sys.exit(1)
 
-auth_file = expanduser(cfg["auth_file"])
 defaults = cfg.get("defaults", {})
 rotation = cfg["rotations"][rotation_name]
 playlist_id = rotation["playlist"]
@@ -40,8 +42,13 @@ best_tracks = lambda t: t["likeStatus"] == "LIKE"
 #pp = pprint.PrettyPrinter()
 
 def rotate_ytmusic():
+    # Authenticate every run. acquire() deletes the credential from disk before
+    # returning, and YTMusic takes the headers as a dict, so nothing downstream
+    # needs the file to exist. Do not reintroduce a cached auth file.
+    headers, source = auth.acquire()
+
     try:
-        ytmusic = YTMusic(auth_file)
+        ytmusic = YTMusic(headers)
     except:
         print("Failed to connect to the YouTube API")
         raise
@@ -159,8 +166,12 @@ def pull_tracks(tracks, regular, best):
 def main():
     try:
         rotate_ytmusic()
+    except auth.AuthError as e:
+        # Auth is automatic now, so this means the extension or the native host
+        # is broken, not that you forgot to log in.
+        sys.exit(str(e))
     except:
-        print("You probably need to login. Run: ytmusicapi oauth")
+        print("Rotation failed.")
         e = sys.exc_info()[1]
         print(e)
         raise

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Rotate Music Auth",
+  "version": "1.1.0",
+  "description": "Exports YouTube Music session cookies for the rotate-music script.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtoJwf8bXi+lCWUn8+To6na9egqNjGzZMM0FLG7y/mH7TCqZWdCa0tEbsTMeYDJbAI0oT4EjUSoMFboI5gssMzqsXE6vaWGz02ramxB4mEBQnwrFwkQRuFnDMsp3BuXYdev39R1xRocvusgh8QpM3oWMW2GIBySNSr6uhlRob3J4oYnKm7kwsmIqivgPn/bMuJGs99ZsFnS/oY/EnrLJV2R2PNZC2L75Y3YL/bWoRK6mFIm4ei02ZVWoU+Gl0aW8HEFLwOu32A9IxZAnVGDjR3UEJ2jPzOpCa/lFa6R1RHbZElyI767esigrF+JwHfenKCoR90im+H0W4LuVMeLWSDQIDAQAB",
+  "permissions": [
+    "cookies",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://*.youtube.com/*"
+  ],
+  "externally_connectable": {
+    "ids": []
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Refresh rotate-music auth"
+  }
+}

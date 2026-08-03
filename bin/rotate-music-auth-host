@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Native messaging host for the Rotate Music Auth extension.
+
+Chrome spawns this with a minimal environment -- no pyenv shims, so no PyYAML
+and no guarantee of anything beyond the system interpreter. Everything here is
+deliberately stdlib-only; the `auth_file:` lookup is a regex rather than a YAML
+parse for exactly that reason.
+"""
+
+import json
+import os
+import re
+import struct
+import sys
+import tempfile
+
+CONFIG = os.path.expanduser("~/.rotate-music.yaml")
+DEFAULT_AUTH_FILE = "~/.rotate-music-auth-cache.json"
+
+
+def auth_file_path():
+    try:
+        with open(CONFIG) as fh:
+            m = re.search(r"^auth_file:\s*(\S+)\s*$", fh.read(), re.MULTILINE)
+    except OSError:
+        m = None
+    return os.path.expanduser(m.group(1) if m else DEFAULT_AUTH_FILE)
+
+
+def read_message():
+    raw = sys.stdin.buffer.read(4)
+    if len(raw) < 4:
+        return None
+    (length,) = struct.unpack("<I", raw)
+    return json.loads(sys.stdin.buffer.read(length).decode("utf-8"))
+
+
+def send_message(obj):
+    data = json.dumps(obj).encode("utf-8")
+    sys.stdout.buffer.write(struct.pack("<I", len(data)))
+    sys.stdout.buffer.write(data)
+    sys.stdout.buffer.flush()
+
+
+def write_auth(headers):
+    """Write the auth file atomically, and never leave it world-readable.
+
+    The temp file is created in the destination directory so os.replace stays
+    on one filesystem, and is chmod'ed before it holds any cookie data.
+    """
+    path = auth_file_path()
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".rotate-music-auth-")
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            json.dump(headers, fh, indent=4, sort_keys=True)
+            fh.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+    return path
+
+
+def main():
+    message = read_message()
+    if not message:
+        return
+
+    # Type-check the cookie up front, not after the write: reporting the count
+    # below calls .split, and a non-string would raise there -- leaving the auth
+    # file already clobbered and no reply sent.
+    headers = message.get("headers")
+    if not isinstance(headers, dict) or not isinstance(headers.get("cookie"), str):
+        send_message({"status": "error", "error": "message had no string cookie header"})
+        return
+
+    try:
+        path = write_auth(headers)
+    except OSError as e:
+        send_message({"status": "error", "error": str(e)})
+        return
+
+    count = len([p for p in headers["cookie"].split("; ") if p])
+    send_message({"status": "ok", "path": path, "cookies": count})
+
+
+if __name__ == "__main__":
+    main()

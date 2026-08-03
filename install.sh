@@ -134,6 +134,15 @@ tmpl-link-file minikube/offlineimap.yaml ~/.zostay-minikube/offlineimap.yaml
 
 link-file rotate-music.yaml ~/.rotate-music.yaml
 
+# Registers the native messaging host that the Rotate Music Auth extension
+# hands YouTube Music cookies to. Idempotent, and a no-op when Chrome is not
+# installed. Loading the extension itself is a one-time manual step; see
+# `rotate-music-login --install`.
+# stderr is deliberately not swallowed: --install also fails when the native
+# host is missing or not executable, and reporting that as "no Chrome profile"
+# would send you looking in the wrong place.
+bin/rotate-music-login --install >/dev/null || true
+
 echo "Ensuring external tools."
 
 # recon: tmux-native dashboard for Claude Code sessions. Used by the

@@ -1,106 +1,91 @@
-#!/usr/bin/env perl
+#!/usr/bin/env python3
+"""Set up or check YouTube Music authentication for rotate-music.
 
-use v5.38;
-use warnings FATAL => 'all';
-use FileHandle;
-use JSON;
-use YAML;
+You do not normally need to run this: `rotate-music` authenticates itself on
+every run. This is the setup and fallback tool.
 
-use constant SEARCH => 1;
-use constant HEADER => 2;
-use constant CONTINUATION => 3;
+    --install   register the native messaging host (also run by install.sh)
+    --ask       paste a 'Copy as cURL' command; the only path that leaves a
+                credential on disk, for when the extension is unavailable
+    (default)   check that automatic auth works end to end, then discard it
+"""
 
-my $config_file = "$ENV{HOME}/.rotate-music.yaml";
-my $config = YAML::LoadFile($config_file);
-my $auth_file = $config->{auth_file};
-$auth_file =~ s/^~/$ENV{HOME}/;
+import argparse
+import os
+import subprocess
+import sys
 
-say <<'STARTUP_MESSAGE';
-Login to YouTube Music:
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import rotate_music_auth as auth  # noqa: E402
 
-Please visit the following URL to authenticate with YouTube Music
 
-    https://music.youtube.com
+def do_install():
+    for path in auth.install():
+        print(f"registered native host: {path}")
+    print(
+        f"\nNow load the extension, once:\n"
+        f"  1. open chrome://extensions\n"
+        f"  2. enable Developer mode\n"
+        f"  3. Load unpacked -> {auth.extension_dir()}\n"
+        f"\nIt should appear with ID {auth.EXTENSION_ID}."
+    )
 
-After you have authenticated, press F12 to open the developer console.
-Filter for 'browse' and right click on the first entry and select
-'Copy > Copy as cURL'.
 
-Then return to this terminal and press ENTER.
-STARTUP_MESSAGE
+def do_ask():
+    path = auth.auth_file_path()
+    print(
+        "Login to YouTube Music:\n\n"
+        "Please visit the following URL to authenticate with YouTube Music\n\n"
+        f"    {auth.YTM}\n\n"
+        "After you have authenticated, press F12 to open the developer console.\n"
+        "Filter for 'browse' and right click on the first entry and select\n"
+        "'Copy > Copy as cURL'.\n\n"
+        "Then return to this terminal and press ENTER."
+    )
+    input()
 
-my $input = <STDIN>;
+    curl = subprocess.run(["/usr/bin/pbpaste"], capture_output=True, text=True, check=True).stdout
+    headers = auth.parse_curl(curl)
 
-open my $paste, '-|', '/usr/bin/pbpaste'
-    or die "Failed to open pipe from pbpaste: $!";
-my $curl = do { local $/; <$paste> };
-close $paste
-    or die "Failed to close pipe from pbpaste: $!";
+    ok, why = auth.validate(headers)
+    if not ok:
+        sys.exit(f"pasted headers are unusable: {why}")
 
-my @words = split /\s+/, $curl;
-my @headers;
-my $mode = SEARCH;
-my $prefix = '';
-for my $word (@words) {
-    if ($mode == SEARCH) {
-        if ($word eq '-H') {
-            $mode = HEADER;
-        }
-        elsif ($word eq '-b') {
-            $mode = HEADER;
-            $prefix = 'cookie: ';
-        }
-    }
-    elsif ($mode == HEADER) {
-        my $sq = $word =~ s/^'//;
-        my $eq = $word =~ s/'$//;
+    auth.write_headers(path, headers)
+    print(f"Wrote headers to {path} ({why}).")
+    print("rotate-music will use this file and leave it in place.")
 
-        push @headers, $prefix.$word;
-        if ($sq && $eq) {
-            $mode = SEARCH;
-        }
-        elsif ($sq) {
-            $mode = CONTINUATION;
-        }
-        else {
-            $mode = SEARCH;
-        }
 
-        $prefix = '';
-    }
-    elsif ($mode == CONTINUATION) {
-        if ($word =~ s/'$//) {
-            $headers[-1] .= " $word";
-            $mode = SEARCH;
-        }
-        else {
-            $headers[-1] .= " $word";
-        }
-    }
-    else {
-        die "I broke my program.";
-    }
-}
+def do_check(timeout):
+    headers, source = auth.acquire(timeout=timeout)
+    ok, why = auth.validate(headers)
+    print(f"Authentication works: {why}, via {source}.")
+    if source == "extension":
+        print("The credential was discarded, as it is on every rotate-music run.")
+    return 0 if ok else 1
 
-my %header_map;
-for my $header (@headers) {
-    if ($header =~ /^([^:]+):\s*(.*)$/) {
-        my ($key, $value) = (lc($1), $2);
-        if (exists $header_map{$key}) {
-            $header_map{$key} .= "; $value";
-        }
-        else {
-            $header_map{$key} = $value;
-        }
-    }
-    else {
-        die "Invalid header: $header";
-    }
-}
 
-say "Writing headers to $auth_file";
+def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--install", action="store_true", help="register the native host")
+    parser.add_argument("--ask", action="store_true", help="paste a cURL command instead")
+    parser.add_argument(
+        "--timeout", type=int, default=30, help="seconds to wait for the extension (default: 30)"
+    )
+    args = parser.parse_args()
 
-open my $authfh, '>', $auth_file
-    or die "Failed to open $auth_file: $!";
-print $authfh to_json(\%header_map);
-close $authfh or die "Failed to write $auth_file: $!";
+    try:
+        if args.install:
+            do_install()
+        elif args.ask:
+            do_ask()
+        else:
+            sys.exit(do_check(args.timeout))
+    except auth.AuthError as e:
+        sys.exit(str(e))
+
+
+if __name__ == "__main__":
+    main()
