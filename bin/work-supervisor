@@ -17,14 +17,11 @@ emulate -L zsh
 setopt no_unset
 
 DEFAULT=claude
-WORKTREE=""
 typeset -a UNSETS
 while [[ $# -gt 0 ]]; do
     case $1 in
         --default=*)  DEFAULT="${1#--default=}"; shift ;;
         --default)    DEFAULT="$2"; shift 2 ;;
-        --worktree=*) WORKTREE="${1#--worktree=}"; shift ;;
-        --worktree)   WORKTREE="$2"; shift 2 ;;
         --unset=*)    UNSETS+=( "${1#--unset=}" ); shift ;;
         --unset)      UNSETS+=( "$2" ); shift 2 ;;
         --) shift; break ;;
@@ -67,19 +64,17 @@ done
 
 next="$DEFAULT"
 
-# --worktree NAME makes every claude relaunch go through `claude -w NAME`,
-# which triggers the WorktreeCreate hook (bin/work-worktree-hook) so claude
-# treats this session as worktree-managed instead of chdir'ing back to the
-# main checkout. Bare `claude` would re-trip that bug on the next relaunch.
+# Launch claude bare — never with `-w`. `workon -w` has already created the
+# worktree at <base>-worktrees/<work> and this pane's cwd is that worktree;
+# claude adopts it as-is. `claude -w NAME` instead makes claude create and
+# own a *second* worktree under <main-checkout>/.claude/worktrees/NAME, so
+# the shell pane and the claude pane end up in different directories and the
+# per-client .workon.env / direnv setup rooted at the real worktree never
+# applies. (`-w` was added when interactive claude chdir'd to the main
+# checkout via --git-common-dir; that no longer happens as of 2.1.220.)
 run_choice() {
     case $1 in
-        claude)
-            if [[ -n "$WORKTREE" ]]; then
-                claude --chrome -w "$WORKTREE"
-            else
-                claude --chrome
-            fi
-            ;;
+        claude)    claude --chrome ;;
         codex)     codex ;;
         copilot)   copilot ;;
         shell|zsh) ${SHELL:-zsh} -l ;;

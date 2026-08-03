@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-# add-claude SESSION_NAME [SESSION_DIR] [WORK_NAME]
+# add-claude SESSION_NAME [SESSION_DIR]
 #
 # Build the standard 3-pane work layout in window 0:
 #
@@ -15,25 +15,20 @@
 # Pane 0 (shell) is expected to already exist; workon creates it via
 # `new-session ... work-supervisor --default=zsh`.
 #
-# WORK_NAME, when set, is the worktree slug. The supervisor passes it to
-# `claude -w` so claude registers the session as worktree-managed (see
-# bin/work-worktree-hook). Leave empty for the prime (non-worktree) case.
+# SESSION_DIR is already the worktree for `workon -w` sessions, and claude
+# inherits it from the pane's -c. Do NOT pass `claude -w` here — see the
+# note in bin/work-supervisor.
 
 SESSION_NAME="$1"
 SESSION_DIR="$2"
-WORK_NAME="$3"
 
 if [[ -z "$SESSION_DIR" ]]; then
     SESSION_DIR="$PWD"
 fi
 
-sup_cmd="work-supervisor --default=claude"
-if [[ -n "$WORK_NAME" ]]; then
-    sup_cmd+=" --worktree=${(q)WORK_NAME}"
-fi
-
 # Right side: Claude under the supervisor so /exit drops to the menu.
-tmux split-window -h -t "$SESSION_NAME:0.0" -c "$SESSION_DIR" "$sup_cmd"
+tmux split-window -h -t "$SESSION_NAME:0.0" -c "$SESSION_DIR" \
+    "work-supervisor --default=claude"
 
 # Bottom-left: the sessions monitor, ~20% of the left column, auto-restarted. Relies
 # on workon having created the session at the client's real dimensions
