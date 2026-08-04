@@ -157,16 +157,26 @@ def parent_basename(path: str) -> str:
 
 
 def pretty_model(name: str) -> str:
-    """claude-sonnet-4-6 -> Sonnet 4.6, gpt-5.5 -> GPT 5.5."""
+    """claude-sonnet-4-6 -> Sonnet 4.6, claude-opus-5 -> Opus 5, gpt-5.5 -> GPT 5.5."""
     if not name:
         return ""
     n = name.strip()
     if n.startswith("claude-"):
+        # Drop the same -fast / -YYYYMMDD suffixes ctx_window strips, so they
+        # can't be mistaken for a minor version ("Opus 5.fast"). A [1m] tier
+        # suffix is deliberately kept -- it is real information the CONTEXT
+        # column doesn't convey -- hence the lookahead past it.
+        n = re.sub(r"-fast(?=(\[.*?\])?$)", "", n)
+        n = re.sub(r"-\d{8}(?=(\[.*?\])?$)", "", n)
         parts = n.split("-")
         # claude-{family}-{maj}-{min} → "Family maj.min"
         if len(parts) >= 4:
-            family = parts[1].capitalize()
-            return f"{family} {parts[2]}.{parts[3]}"
+            return f"{parts[1].capitalize()} {parts[2]}.{parts[3]}"
+        # claude-{family}-{maj} → "Family maj". Anthropic's 5-generation ids are
+        # dateless and carry no minor component, so the form above never matched
+        # them and they fell through to the raw id.
+        if len(parts) >= 3:
+            return f"{parts[1].capitalize()} {parts[2]}"
         return n
     if n.startswith("gpt-"):
         return "GPT " + n[4:]
