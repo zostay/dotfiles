@@ -74,9 +74,11 @@ bind -n MouseDown1Status run-shell "work-switch #{mouse_status_range}"
 bind -n M-Left  switch-client -p
 bind -n M-Right switch-client -n
 
-# --- recon integration ---------------------------------------------------
-bind g display-popup -E -w 80% -h 60% recon
-bind i run-shell "recon next"
+# --- sessions monitor ----------------------------------------------------
+# `sessions` is interactive-only (it takes no argv), so there is no CLI
+# equivalent of the old `recon next` behind a `bind i`; the popup's own `n`
+# key jumps to the next agent waiting for input instead.
+bind g display-popup -E -w 80% -h 60% sessions
 bind W command-prompt -p "workon:" "run-shell 'workon %1'"
 bind X confirm-before -p "kill #S? (y/n)" kill-session
 

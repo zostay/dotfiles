@@ -43,8 +43,7 @@ Add this to crontab if this is a mail checking machine:
 
 `workon` starts (or jumps to) a tmux session for a project, with a 3-pane
 layout tuned for coding alongside a Claude Code agent and the `sessions`
-monitor — a unified dashboard layered over
-[recon](https://github.com/gavraz/recon).
+monitor — a unified dashboard over live Claude Code and Codex sessions.
 
 ## Layout
 
@@ -65,13 +64,13 @@ monitor — a unified dashboard layered over
 - **Left bottom — sessions**: the unified session monitor (`bin/sessions`)
   wrapped by `sessions-loop`, which restarts it forever (and prints a
   friendly hint if `sessions` isn't on PATH). It merges Claude Code
-  sessions (via `recon json`) and live Codex sessions (via the Codex
-  SQLite state + a tmux pane scan) into one alphabetized list, color-coded
-  by source. `j`/`k`/arrows navigate, `Enter` switches to the selected
-  session, `n` jumps to the next agent waiting for input, and it
-  auto-refreshes every 5 s. The current session is starred, a status of
-  "waiting for input" is colored red, and you can hover/click rows with the
-  mouse to select and switch.
+  sessions (via Claude's own session registry and transcripts) and live
+  Codex sessions (via the Codex SQLite state + a tmux pane scan) into one
+  alphabetized list, color-coded by source. `j`/`k`/arrows navigate,
+  `Enter` switches to the selected session, `n` jumps to the next agent
+  waiting for input, and it auto-refreshes every 5 s. The current session
+  is starred, a status of "waiting for input" is colored red, and you can
+  hover/click rows with the mouse to select and switch.
 - **Status line**: every live tmux session is a clickable "tab" (rendered
   by `bin/work-status`); the current one is highlighted.
 
@@ -193,8 +192,7 @@ Prefix is `C-j` (unchanged from before).
 | Binding                | Action                                           |
 |------------------------|--------------------------------------------------|
 | `Alt-Left` / `Alt-Right` | Cycle to previous / next session (no prefix)   |
-| `prefix g`             | Open `recon` in a popup (no session switch)      |
-| `prefix i`             | Jump to the next agent waiting for input         |
+| `prefix g`             | Open `sessions` in a popup                       |
 | `prefix W`             | Prompt for a `workon` argument and run it        |
 | `prefix X`             | Confirm + kill the current session               |
 | `MouseDown1Status`     | Click a session label in the status line to jump |
@@ -210,10 +208,6 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 - `tmux >= 3.1` (for percentage splits and `display-popup`)
 - `python3` — runs the `bin/sessions` TUI in the bottom-left pane. If
   `sessions` isn't on `$PATH`, the pane prints a hint and retries every 30 s.
-- [`recon`](https://github.com/gavraz/recon) — still required as the data
-  source behind `sessions` (it shells out to `recon json` for the Claude
-  side) and behind the `prefix g` popup and `prefix i`. `./install.sh`
-  installs it via `cargo install --git ...` if it's missing.
 - `codex` on `$PATH` if you want the `[o]` menu option to work — Codex
   sessions also show up in `sessions` via `~/.codex/state_5.sqlite`.
 - `copilot` on `$PATH` for the `[p]` menu option (GitHub Copilot CLI).
@@ -232,7 +226,6 @@ closes (`session-closed` hook), so the next `workon` cold-starts.
 | `bin/work-supervisor` | Relaunch loop + menu around shell/claude/codex/copilot |
 | `bin/sessions`        | Unified Claude + Codex session monitor (bottom-left pane) |
 | `bin/sessions-loop`   | Restart-`sessions`-forever wrapper                    |
-| `bin/recon-loop`      | Restart-recon-forever wrapper (superseded by `sessions-loop`) |
 | `bin/work-status`     | Emits the clickable session list for the status line  |
 | `bin/work-switch`     | Resolves a status-line click index to a session name  |
 | `bin/work-worktree`   | Idempotent `git worktree add` helper                  |

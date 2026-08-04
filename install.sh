@@ -142,9 +142,3 @@ link-file rotate-music.yaml ~/.rotate-music.yaml
 # host is missing or not executable, and reporting that as "no Chrome profile"
 # would send you looking in the wrong place.
 bin/rotate-music-login --install >/dev/null || true
-
-echo "Ensuring external tools."
-
-# recon: tmux-native dashboard for Claude Code sessions. Used by the
-# `workon` 3-pane layout (bottom-left pane). See README.md.
-install-cargo-crate recon https://github.com/gavraz/recon
