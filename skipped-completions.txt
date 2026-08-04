@@ -73,3 +73,5 @@ zedpm-plugin-github
 zedpm-plugin-go
 zedpm-plugin-goals
 zedpm-plugin-golangci
+actionlint
+simplefin-debug
