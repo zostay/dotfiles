@@ -7,8 +7,10 @@ is not "claude"/"codex"), then read that agent's own on-disk state for model,
 tokens, branch, and status.
 """
 
+import colorsys
 import glob
 import json
+import math
 import os
 import re
 import select
@@ -53,6 +55,9 @@ MODELS_TABLE = os.path.join(
 
 RESET    = "\033[0m"
 BOLD     = "\033[1m"
+# Ends bold without RESET — a full reset inside a row would also drop the
+# selected/hover background for the remainder of the line.
+BOLD_OFF = "\033[22m"
 HIDE_CUR = "\033[?25l"
 SHOW_CUR = "\033[?25h"
 CLR_SCR  = "\033[2J\033[H"
@@ -119,6 +124,31 @@ C_CTX_HIGH    = (235, 120, 120)   # pastel red    — full / over 100%
 C_CTX_OK      = C_NORMAL          # gray — ratio unknown (Codex, or zero usage)
 C_CTX_UNKNOWN = (200, 150, 250)   # lavender — window unknown, showing raw N only
 
+# LAST ACTIVE gradient — the fastest way to spot which sessions are alive.
+# Stops are (position, hue°, saturation, value) and hue climbs monotonically
+# green → cyan → blue → lavender → reddish-purple, so the ramp reads as one
+# continuous fade rather than a set of buckets. Saturation/value are tuned per
+# stop instead of held fixed: at a constant s/v the blues read much darker than
+# the greens and the ramp looks like it dips in the middle.
+AGE_STOPS = (
+    (0.00, 130.0, 0.58, 0.88),   # green         — seconds ago
+    (0.25, 180.0, 0.55, 0.86),   # cyan
+    (0.50, 218.0, 0.52, 0.94),   # blue
+    (0.75, 268.0, 0.44, 0.97),   # lavender
+    (1.00, 315.0, 0.48, 0.88),   # reddish-purple — a day or more
+)
+# Age is mapped onto that position logarithmically and pinned at 1 day: nearly
+# every session in view is minutes old, so a linear 24h ramp would paint the
+# whole list green and convey nothing.
+AGE_MAX_SECS = 86400
+# Eases the log curve back out a little, so the ramp still spends its blues on
+# the hour-to-few-hours range instead of racing to lavender by lunchtime.
+AGE_CURVE = 1.2
+
+# A session touched within this many seconds gets its name bolded — the
+# "someone is working here right now" cue, complementing the gradient.
+RECENT_SECS = 900
+
 # Backgrounds — selected and menu bars use these. Picked to stay visibly
 # distinct from every foreground in the palette so no text vanishes.
 BG_SELECTED       = ( 50,  58,  78)
@@ -183,19 +213,24 @@ def pretty_model(name: str) -> str:
     return n
 
 
-def fmt_age(ts) -> str:
-    """ISO-8601 string or millisecond int → relative time string."""
+def age_seconds(ts):
+    """ISO-8601 string or millisecond int → seconds since, or None if unusable."""
     if ts is None:
-        return "-"
-    now = datetime.now(timezone.utc)
+        return None
     if isinstance(ts, str):
         try:
             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         except ValueError:
-            return "?"
+            return None
     else:
         dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
-    secs = max(0, int((now - dt).total_seconds()))
+    return max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+
+
+def fmt_age(secs) -> str:
+    """Seconds (from age_seconds) → relative time string."""
+    if secs is None:
+        return "-"
     if secs < 60:
         return f"{secs}s ago"
     if secs < 3600:
@@ -828,6 +863,26 @@ def context_color(ratio, unknown=False):
     return _lerp_rgb(C_CTX_MID, C_CTX_HIGH, (r - 0.5) / 0.5)
 
 
+def _hsv_rgb(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb((h % 360.0) / 360.0, s, v)
+    return (round(r * 255), round(g * 255), round(b * 255))
+
+
+def age_color(secs):
+    """Seconds since last activity → a point on the AGE_STOPS hue ramp."""
+    if secs is None:
+        return C_NORMAL
+    span = math.log1p(AGE_MAX_SECS / 60.0)
+    t    = min(1.0, math.log1p(max(0, secs) / 60.0) / span) ** AGE_CURVE
+    for (t0, h0, s0, v0), (t1, h1, s1, v1) in zip(AGE_STOPS, AGE_STOPS[1:]):
+        if t <= t1:
+            f = (t - t0) / (t1 - t0)
+            return _hsv_rgb(h0 + (h1 - h0) * f,
+                            s0 + (s1 - s0) * f,
+                            v0 + (v1 - v0) * f)
+    return _hsv_rgb(*AGE_STOPS[-1][1:])
+
+
 def fit(s: str, width: int) -> str:
     """Plain truncate-or-pad to `width` visible chars."""
     s = str(s)
@@ -841,10 +896,15 @@ def cell(text: str, color, width: int) -> str:
     return fg(color) + fit(text, width)
 
 
-def session_cell(name: str, color, related: bool, width: int) -> str:
-    """Session name prefixed by a gold star (related) or a space (aligns the rest)."""
+def session_cell(name: str, color, related: bool, width: int,
+                 recent: bool = False) -> str:
+    """Session name prefixed by a gold star (related) or a space (aligns the rest).
+
+    `recent` bolds the name so live sessions stand out from the stale ones.
+    """
     marker = (fg(C_STAR) + STAR_GLYPH) if related else " "
-    return marker + fg(color) + fit(name, width - 1)
+    body   = fg(color) + fit(name, width - 1)
+    return marker + (BOLD + body + BOLD_OFF if recent else body)
 
 
 def project_cell(project: str, branch, width: int) -> str:
@@ -925,14 +985,16 @@ def render(sessions: list, selected: int, warnings: list,
             sess_color = SRC_COLOR.get(s.get("source", ""), C_BRIGHT)
             related    = bool(current_session) and \
                          s["tmux_session"] == current_session
+            age = age_seconds(s["ts"])
             cells = [
-                session_cell(s["tmux_session"], sess_color, related,  col_s),
+                session_cell(s["tmux_session"], sess_color, related, col_s,
+                             recent=age is not None and age < RECENT_SECS),
                 project_cell(s["project_name"], s["branch"],           col_p),
                 cell(s["short_dir"],        C_NORMAL,                  col_d),
                 cell(s["status"],           status_color(s["status"]), col_st),
                 cell(s["model_display"],    C_NORMAL,                  col_m),
                 cell(s["context_str"],      context_color(s["ratio"], s.get("ctx_unknown")), col_c),
-                cell(fmt_age(s["ts"]),      C_NORMAL,                  col_l),
+                cell(fmt_age(age),          age_color(age),            col_l),
             ]
             row_parts.append(" ".join(cells))
             row_parts.append(FG_DEF + CLR_EOL + RESET + "\r\n")
