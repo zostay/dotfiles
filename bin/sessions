@@ -105,14 +105,29 @@ SRC_COLOR = {
 }
 
 # Status colors
+C_BACKGROUND = (110, 205, 205)    # teal — busy off the main loop (see BG_LABELS)
+
 C_STATUS = {
-    "Idle":    (130, 130, 130),
-    "New":     (110, 165, 245),
-    "Running": (120, 210, 140),
-    "Working": (120, 210, 140),
-    "Busy":    (120, 210, 140),
-    "Input":   (235, 110, 110),   # red — Claude waiting on user input
-    "Waiting": (235, 110, 110),   # red — Codex waiting on user input
+    "Idle":     (130, 130, 130),
+    "New":      (110, 165, 245),
+    "Running":  (120, 210, 140),
+    "Working":  (120, 210, 140),
+    "Busy":     (120, 210, 140),
+    "Input":    (235, 110, 110),   # red — Claude waiting on user input
+    "Waiting":  (235, 110, 110),   # red — Codex waiting on user input
+    # Background work: the composer is free but something is still running, so
+    # these get their own color — green would claim the main loop is streaming,
+    # gray would repeat the lie this whole state exists to correct.
+    "Agents":   C_BACKGROUND,
+    "Workflow": C_BACKGROUND,
+    "Team":     C_BACKGROUND,
+    "MCP":      C_BACKGROUND,
+    "Cloud":    C_BACKGROUND,
+    "Shell":    C_BACKGROUND,
+    "Monitor":  C_BACKGROUND,
+    "Dream":    C_BACKGROUND,
+    "Scan":     C_BACKGROUND,
+    "Tasks":    C_BACKGROUND,
 }
 
 # Context-usage gradient anchors (ratio = used / window). The CONTEXT column
@@ -339,8 +354,11 @@ def owning_pane(pid: int, ppid_map: dict, pane_info: dict):
 # ~/.claude. We therefore key on the process, learn its config dir from the
 # environment, then read its registry and transcript.
 
-# Claude's own per-process status → our status vocabulary.
-REG_STATUS = {"busy": "Running", "idle": "Idle", "shell": "Idle"}
+# Claude's own per-process status → our status vocabulary. Claude writes "shell"
+# for "main loop idle, but a backgrounded Bash command is still running", so it
+# is background work, not idleness — the one background kind the registry knows
+# about (agents, workflows and the rest never leave "idle"). See BG_LABELS.
+REG_STATUS = {"busy": "Running", "idle": "Idle", "shell": "Shell"}
 
 
 def is_claude_cmd(cmd: str) -> bool:
@@ -536,22 +554,56 @@ _SPINNER_RE = re.compile(r"esc to interrupt|esc to cancel|…[^\n]*\btokens?\b",
 # so its absence confirms a real prompt has replaced the composer.
 _SELECT_RE = re.compile(r"❯\s*\d+\.")
 
+# Background work — subagents, dynamic workflows, backgrounded shells, monitors —
+# runs while the main loop sits at the composer, so none of the signals above fire
+# and the session reads as Idle when it is anything but. Claude does report it, in
+# the mode line at the very bottom of the pane, as a "·"-separated segment:
+#
+#   -- INSERT -- ⏵⏵ auto mode on · 2 local agents · ← for agents
+#
+# These patterns are that segment's full vocabulary (Claude Code 2.1.x), mapped to
+# a STATUS word. Matched against the mode line alone, never the scrollback above
+# it, so transcript prose can't be mistaken for a live indicator — and anchored on
+# the leading count for the same reason ("← for agents" is a permanent hint, not a
+# running agent). Order matters: a mixed set of kinds collapses to the generic
+# "N background tasks", so the specific patterns are tried first.
+BG_LABELS = [
+    (re.compile(r"\b\d+ local agents?\b"),                       "Agents"),
+    (re.compile(r"\b\d+ (?:background|remote) dynamic workflows?\b"), "Workflow"),
+    (re.compile(r"\b\d+ teams?\b"),                              "Team"),
+    (re.compile(r"\b\d+ mcp (?:task|job)s?\b"),                  "MCP"),
+    (re.compile(r"\b\d+ cloud sessions?\b|\bultraplan\b"),       "Cloud"),
+    (re.compile(r"\b\d+ shells?\b"),                             "Shell"),
+    (re.compile(r"\b\d+ monitors?\b"),                           "Monitor"),
+    (re.compile(r"\bdreaming\b"),                                "Dream"),
+    (re.compile(r"\bauto-mode scan\b"),                          "Scan"),
+    (re.compile(r"\b\d+ background tasks?\b"),                   "Tasks"),
+]
 
-def _pane_tail(pane_target: str, lines: int = 12) -> str:
-    """Lowercased text of the last `lines` non-empty rows of a pane, or "".
 
-    The state signals (spinner, prompt, insert footer) all render in this bottom
-    region; restricting to it keeps older scrollback prose from being misread as
-    a live prompt."""
+def background_label(mode_line: str) -> str:
+    """STATUS word for whatever background work the mode line reports, or ""."""
+    for pat, label in BG_LABELS:
+        if pat.search(mode_line):
+            return label
+    return ""
+
+
+def _pane_rows(pane_target: str, lines: int = 12) -> list:
+    """Lowercased last `lines` non-empty rows of a pane, oldest first ([] on error).
+
+    The state signals (spinner, prompt, insert footer, background indicator) all
+    render in this bottom region; restricting to it keeps older scrollback prose
+    from being misread as a live prompt."""
     try:
         cap = subprocess.run(
             ["tmux", "capture-pane", "-t", pane_target, "-p"],
             capture_output=True, text=True, timeout=2,
         ).stdout
     except Exception:
-        return ""
-    rows = [ln for ln in cap.splitlines() if ln.strip()]
-    return "\n".join(rows[-lines:]).lower()
+        return []
+    rows = [ln.lower() for ln in cap.splitlines() if ln.strip()]
+    return rows[-lines:]
 
 
 def claude_status(reg_status: str, pane_target: str, last_turn: str,
@@ -560,21 +612,31 @@ def claude_status(reg_status: str, pane_target: str, last_turn: str,
 
     The live pane is ground truth for what Claude is doing *right now*, so it is
     consulted first: a streaming spinner means Running, a numbered attention
-    prompt means Input, anything else Idle. Claude's self-reported registry
-    status is only a fallback — older versions (≤2.1.169, no `statusUpdatedAt`)
-    write "busy" and never flip it back to "idle", which otherwise pins a
-    finished session to Running forever. The registry's explicit "waiting" is
-    trusted up front: that state is unambiguous and its prompt may scroll
-    off-pane.
+    prompt means Input, a mode-line background indicator means work is in flight
+    off the main loop, anything else Idle. Claude's self-reported registry status
+    is only a fallback — older versions (≤2.1.169, no `statusUpdatedAt`) write
+    "busy" and never flip it back to "idle", which otherwise pins a finished
+    session to Running forever. The registry's explicit "waiting" is trusted up
+    front: that state is unambiguous and its prompt may scroll off-pane.
     """
     if (reg_status or "") == "waiting":
         return "Input", True
-    tail = _pane_tail(pane_target) if pane_target else ""
-    if tail:
+    rows = _pane_rows(pane_target) if pane_target else []
+    if rows:
+        tail = "\n".join(rows)
         if _SPINNER_RE.search(tail):
             return "Running", False
         if _SELECT_RE.search(tail) and "-- insert --" not in tail:
             return "Input", True
+        bg = background_label(rows[-1])
+        if bg:
+            return bg, False
+        # A too-narrow pane drops the mode line's background segment, but the
+        # registry still reports backgrounded shells ("shell") on its own. Only
+        # that value is honored here — "busy" from an older Claude never clears,
+        # and the pane already told us this session isn't streaming.
+        if (reg_status or "") == "shell":
+            return "Shell", False
         return "Idle", False
     # No pane to read — fall back to the registry, then the transcript.
     if not has_transcript:
