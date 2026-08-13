@@ -164,6 +164,15 @@ AGE_CURVE = 1.2
 # "someone is working here right now" cue, complementing the gradient.
 RECENT_SECS = 900
 
+# ...as does a session that is live regardless of when its main thread last spoke.
+# A turn awaiting a two-hour workflow has a two-hour-old LAST ACTIVE (that column
+# means main-thread activity and is left alone), but it is the opposite of stale,
+# and un-bolding it would undo exactly what the bold is for.
+LIVE_STATUSES = frozenset(
+    {"Running", "Working", "Busy"} |
+    {s for s, c in C_STATUS.items() if c == C_BACKGROUND}
+)
+
 # Backgrounds — selected and menu bars use these. Picked to stay visibly
 # distinct from every foreground in the palette so no text vanishes.
 BG_SELECTED       = ( 50,  58,  78)
@@ -556,18 +565,26 @@ _SELECT_RE = re.compile(r"❯\s*\d+\.")
 
 # Background work — subagents, dynamic workflows, backgrounded shells, monitors —
 # runs while the main loop sits at the composer, so none of the signals above fire
-# and the session reads as Idle when it is anything but. Claude does report it, in
-# the mode line at the very bottom of the pane, as a "·"-separated segment:
+# and the session reads as Idle when it is anything but. Claude reports it below
+# the composer, in two places: the mode line's "·"-separated segments, and pinned
+# progress rows under it. Both are live (a finished shell drops off the mode line;
+# the workflow row's counter and elapsed timer tick):
 #
 #   -- INSERT -- ⏵⏵ auto mode on · 2 local agents · ← for agents
+#     ◯ enhanced-rush-wave-2  Wave 2 of #892     4/5 agents done · 1h 39m · ↓ 468.9k tokens
 #
-# These patterns are that segment's full vocabulary (Claude Code 2.1.x), mapped to
-# a STATUS word. Matched against the mode line alone, never the scrollback above
-# it, so transcript prose can't be mistaken for a live indicator — and anchored on
-# the leading count for the same reason ("← for agents" is a permanent hint, not a
+# These patterns are that vocabulary (Claude Code 2.1.x), mapped to a STATUS word.
+# Matched against the footer region alone, never the scrollback above the composer,
+# so transcript prose can't be mistaken for a live indicator — and anchored on the
+# leading count for the same reason ("← for agents" is a permanent hint, not a
 # running agent). Order matters: a mixed set of kinds collapses to the generic
 # "N background tasks", so the specific patterns are tried first.
+#
+# The workflow row is listed first and is load-bearing: a dynamic workflow the turn
+# is *awaiting* never reaches the mode line at all (it is not a backgrounded task —
+# it is the turn), so this row is the only place it appears.
 BG_LABELS = [
+    (re.compile(r"\b\d+/\d+ agents done\b"),                     "Workflow"),
     (re.compile(r"\b\d+ local agents?\b"),                       "Agents"),
     (re.compile(r"\b\d+ (?:background|remote) dynamic workflows?\b"), "Workflow"),
     (re.compile(r"\b\d+ teams?\b"),                              "Team"),
@@ -581,10 +598,25 @@ BG_LABELS = [
 ]
 
 
-def background_label(mode_line: str) -> str:
-    """STATUS word for whatever background work the mode line reports, or ""."""
+# The composer is drawn between two full-width rules; everything below the last
+# one is Claude's footer region (mode line, then any pinned progress rows). The
+# mode line is *not* reliably the last row — a running workflow pins its progress
+# under it — so the region is taken as a whole rather than indexed from the end.
+_RULE_RE = re.compile(r"^[\s─━╌┄]{20,}$")
+
+
+def footer_region(rows: list) -> str:
+    """Everything below the composer's bottom rule, joined ("" if no rule found)."""
+    for i in range(len(rows) - 1, -1, -1):
+        if _RULE_RE.match(rows[i]):
+            return "\n".join(rows[i + 1:])
+    return ""
+
+
+def background_label(footer: str) -> str:
+    """STATUS word for whatever background work the footer reports, or ""."""
     for pat, label in BG_LABELS:
-        if pat.search(mode_line):
+        if pat.search(footer):
             return label
     return ""
 
@@ -606,21 +638,30 @@ def _pane_rows(pane_target: str, lines: int = 12) -> list:
     return rows[-lines:]
 
 
-def claude_status(reg_status: str, pane_target: str, last_turn: str,
+def claude_status(reg: dict, pane_target: str, last_turn: str,
                   has_transcript: bool) -> tuple:
-    """(status, waiting) for a Claude session.
+    """(status, waiting) for a Claude session, from its registry record + pane.
 
     The live pane is ground truth for what Claude is doing *right now*, so it is
     consulted first: a streaming spinner means Running, a numbered attention
-    prompt means Input, a mode-line background indicator means work is in flight
-    off the main loop, anything else Idle. Claude's self-reported registry status
-    is only a fallback — older versions (≤2.1.169, no `statusUpdatedAt`) write
-    "busy" and never flip it back to "idle", which otherwise pins a finished
-    session to Running forever. The registry's explicit "waiting" is trusted up
-    front: that state is unambiguous and its prompt may scroll off-pane.
+    prompt means Input, a footer background indicator means work is in flight off
+    the main loop. Only then does Claude's self-reported registry status get a
+    say. The registry's explicit "waiting" is trusted up front: that state is
+    unambiguous and its prompt may scroll off-pane.
+
+    `busy` is the delicate one. Versions ≤2.1.169 set it and never flip it back,
+    which pins a finished session to Running forever — that's why the pane leads.
+    But those versions also predate `statusUpdatedAt`, so its presence marks a
+    registry that does maintain the field, and there `busy` is real information no
+    pane scrape can reproduce: a turn awaiting a dynamic workflow shows a bare
+    composer with no spinner, and reads as Idle on pane evidence alone.
     """
-    if (reg_status or "") == "waiting":
+    reg_status = reg.get("status") or ""
+    if reg_status == "waiting":
         return "Input", True
+    # Presence of the field, not its value: it marks a version that keeps `status`
+    # current. A long turn legitimately leaves it hours stale, so it isn't aged out.
+    reg_live = reg.get("statusUpdatedAt") is not None
     rows = _pane_rows(pane_target) if pane_target else []
     if rows:
         tail = "\n".join(rows)
@@ -628,20 +669,18 @@ def claude_status(reg_status: str, pane_target: str, last_turn: str,
             return "Running", False
         if _SELECT_RE.search(tail) and "-- insert --" not in tail:
             return "Input", True
-        bg = background_label(rows[-1])
+        bg = background_label(footer_region(rows))
         if bg:
             return bg, False
-        # A too-narrow pane drops the mode line's background segment, but the
-        # registry still reports backgrounded shells ("shell") on its own. Only
-        # that value is honored here — "busy" from an older Claude never clears,
-        # and the pane already told us this session isn't streaming.
-        if (reg_status or "") == "shell":
-            return "Shell", False
+        # Nothing visible in the pane. A too-narrow pane can clip the footer
+        # segments, so give the registry the last word when it is maintained.
+        if reg_live and reg_status in ("busy", "shell"):
+            return REG_STATUS[reg_status], False
         return "Idle", False
     # No pane to read — fall back to the registry, then the transcript.
     if not has_transcript:
         return "New", False
-    base = REG_STATUS.get(reg_status or "", "")
+    base = REG_STATUS.get(reg_status, "")
     if base:
         return base, False
     return ("Running", False) if last_turn == "user" else ("Idle", False)
@@ -697,7 +736,7 @@ def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
             ctx_unknown = True
 
         status, waiting = claude_status(
-            reg.get("status"), pane_target, info["last_turn"], bool(jsonl))
+            reg, pane_target, info["last_turn"], bool(jsonl))
 
         # The per-client config dir (e.g. bambee) drives the SESSION color.
         source = "claude_bambee" if "bambee" in cfg.lower() else "claude_default"
@@ -1050,7 +1089,8 @@ def render(sessions: list, selected: int, warnings: list,
             age = age_seconds(s["ts"])
             cells = [
                 session_cell(s["tmux_session"], sess_color, related, col_s,
-                             recent=age is not None and age < RECENT_SECS),
+                             recent=(age is not None and age < RECENT_SECS)
+                                    or s["status"] in LIVE_STATUSES),
                 project_cell(s["project_name"], s["branch"],           col_p),
                 cell(s["short_dir"],        C_NORMAL,                  col_d),
                 cell(s["status"],           status_color(s["status"]), col_st),
