@@ -197,6 +197,13 @@ BRANCH_GLYPH = ""  # Nerd Font powerline branch symbol
 STAR_GLYPH   = "★"  # filled five-pointed star marking the current tmux session
 
 
+# Joins a project path to a worktree checked out beside it, standing in for the
+# "-worktrees/" path segment: bambee/gpt-universe⑂pipeline-improvements. U+2442
+# OCR FORK — plain Unicode (no Nerd Font needed), single-width, and reads as a
+# branching tree.
+WORKTREE_GLYPH = "⑂"
+
+
 def branch_visible(branch) -> bool:
     return bool(branch) and branch.lower() not in ("main", "master")
 
@@ -740,13 +747,15 @@ def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
 
         # The per-client config dir (e.g. bambee) drives the SESSION color.
         source = "claude_bambee" if "bambee" in cfg.lower() else "claude_default"
+        project, short_dir, worktree, branch = path_fields(cwd)
         out.append({
             "type":          "claude",
             "source":        source,
             "tmux_session":  tmux_session,
-            "project_name":  os.path.basename(cwd),
-            "branch":        git_branch(cwd),
-            "short_dir":     parent_basename(cwd),
+            "project_name":  project,
+            "branch":        branch,
+            "short_dir":     short_dir,
+            "worktree":      worktree,
             "status":        status,
             "model_display": pretty_model(model),
             "context_str":   context_str,
@@ -758,15 +767,52 @@ def fetch_claude(pane_info: dict, ppid_map: dict, procs: list) -> list:
     return out
 
 
-def git_branch(cwd: str) -> str:
+def git_context(cwd: str) -> tuple:
+    """(branch, main_checkout) for `cwd`, from a single git call.
+
+    `--git-common-dir` resolves to the *primary* working tree's .git even when
+    cwd is a linked worktree, which is the only reliable way to recover the
+    real project name: `workon -w <work> <project>` puts the session in
+    <project>-worktrees/<work>, whose basename is the work, not the project.
+    Falls back to ("", cwd) outside a repo, so non-git dirs still name
+    themselves.
+    """
+    if not cwd:
+        return "", ""   # `git -C ""` would silently resolve against our own cwd
     try:
         r = subprocess.run(
-            ["git", "-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
+            ["git", "-C", cwd, "rev-parse", "--abbrev-ref", "HEAD",
+             "--path-format=absolute", "--git-common-dir"],
             capture_output=True, text=True, timeout=2,
         )
-        return r.stdout.strip() if r.returncode == 0 else ""
+        if r.returncode != 0:
+            return "", cwd
+        lines  = r.stdout.strip().splitlines()
+        branch = lines[0].strip() if lines else ""
+        main   = cwd
+        if len(lines) > 1:
+            common = lines[1].strip()
+            # <main>/.git for a normal checkout and for every linked worktree.
+            # A bare repo has no working tree to name, so keep cwd.
+            if os.path.basename(common) == ".git":
+                main = os.path.dirname(common)
+        return branch, main
     except Exception:
-        return ""
+        return "", cwd
+
+
+def path_fields(cwd: str) -> tuple:
+    """(project_name, short_dir, worktree, branch) for a session's cwd.
+
+    A worktree is attributed to its project: PROJECT shows the project (with
+    the branch beside it, as always) and DIR shows the project path with the
+    worktree appended after WORKTREE_GLYPH.
+    """
+    branch, main = git_context(cwd)
+    if main and main != cwd:
+        return (os.path.basename(main), parent_basename(main),
+                os.path.basename(cwd), branch)
+    return os.path.basename(cwd), parent_basename(cwd), "", branch
 
 
 # ── Codex sessions (via SQLite + tmux pane scan) ──────────────────────────────
@@ -857,13 +903,17 @@ def fetch_codex(pane_info: dict, ppid_map: dict, procs: list) -> list:
                 status = "Idle"
 
             cwd = t["cwd"] or ""
+            project, short_dir, worktree, branch = path_fields(cwd)
             out.append({
                 "type":          "codex",
                 "source":        "codex",
                 "tmux_session":  tmux_session,
-                "project_name":  os.path.basename(cwd),
-                "branch":        t["git_branch"] or "",
-                "short_dir":     parent_basename(cwd),
+                "project_name":  project,
+                # Codex records the branch itself; prefer it, since its cwd may
+                # have moved on since the thread was last written.
+                "branch":        t["git_branch"] or branch,
+                "short_dir":     short_dir,
+                "worktree":      worktree,
                 "status":        status,
                 "model_display": pretty_model(t["model"] or ""),
                 "context_str":   fmt_tokens(t["tokens_used"] or 0),
@@ -1033,6 +1083,28 @@ def project_cell(project: str, branch, width: int) -> str:
     return fg(C_BRIGHT) + project + fg(C_BRANCH) + suffix_trunc
 
 
+def dir_cell(short_dir: str, worktree, width: int) -> str:
+    """Project path; a worktree is appended after the glyph, in branch green.
+
+    The project path gets truncation priority — the worktree name is also the
+    branch shown in PROJECT, so losing its tail here costs nothing.
+    """
+    if not worktree:
+        return cell(short_dir, C_NORMAL, width)
+
+    suffix     = WORKTREE_GLYPH + worktree
+    full_plain = short_dir + suffix
+    if len(full_plain) <= width:
+        return (fg(C_NORMAL) + short_dir +
+                fg(C_BRANCH) + suffix +
+                " " * (width - len(full_plain)))
+
+    if len(short_dir) >= width - 1:
+        return fg(C_NORMAL) + short_dir[:width - 1] + "~"
+    room = width - len(short_dir)
+    return fg(C_NORMAL) + short_dir + fg(C_BRANCH) + suffix[:room - 1] + "~"
+
+
 def render_menu(term_w: int) -> str:
     """Bottom status line: keys + descriptions, padded across the row."""
     text   = ""
@@ -1092,7 +1164,7 @@ def render(sessions: list, selected: int, warnings: list,
                              recent=(age is not None and age < RECENT_SECS)
                                     or s["status"] in LIVE_STATUSES),
                 project_cell(s["project_name"], s["branch"],           col_p),
-                cell(s["short_dir"],        C_NORMAL,                  col_d),
+                dir_cell(s["short_dir"], s.get("worktree"),            col_d),
                 cell(s["status"],           status_color(s["status"]), col_st),
                 cell(s["model_display"],    C_NORMAL,                  col_m),
                 cell(s["context_str"],      context_color(s["ratio"], s.get("ctx_unknown")), col_c),

@@ -120,6 +120,11 @@ Re-running the same `-w` command reopens the work: if the tmux session is
 still alive it just switches, and if it isn't, the existing worktree is
 reused as-is (no `git worktree add`, no branch reset).
 
+In the `sessions` monitor a worktree is attributed to its **project**, not
+to the worktree directory — `-w spike dotfiles` shows PROJECT `dotfiles 
+spike` and DIR `0/dotfiles⑂spike`, where `⑂` stands in for the
+`-worktrees/` path segment.
+
 ## Editor mode (`-e`)
 
     workon -e <project>
