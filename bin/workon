@@ -64,24 +64,7 @@ if (( $SHORTEN )); then
     NAME=$( basename $NAME )
 fi
 
-if [[ "${DIR:0:1}" != "/" ]]; then
-    if [[ -d "$HOME/projects/$DIR" ]]; then
-        DIR="$HOME/projects/$DIR"
-    elif [[ -d "$GOPATH/src/github.com/$DIR" ]]; then
-        DIR="$GOPATH/src/github.com/$DIR"
-    elif [[ -d "$PWD/$DIR" ]]; then
-        DIR="$PWD/$DIR"
-    else
-        DIR="$HOME"
-    fi
-fi
-
 NAME="${NAME//\./-}"
-
-# Resolve worktree path (no-op for WORK_NAME=prime).
-if ! WORK_DIR=$( work-worktree "$DIR" "$WORK_NAME" ); then
-    exit 1
-fi
 
 # Session name encodes the work; prime stays bare for the most-common case.
 if [[ "$WORK_NAME" == "prime" ]]; then
@@ -90,67 +73,107 @@ else
     SESSION_NAME="${NAME}-${WORK_NAME}"
 fi
 
+# The session name is derived from the *basename* of the project and the work,
+# so resuming never needs the project directory. Answer that question before
+# touching the filesystem: `workon -w <work> <project>` must re-enter an
+# existing session even when <project> is written differently than it was the
+# first time (bare vs org-qualified), and must not fail in work-worktree.
 if [[ -n "$TMUX" ]] && tmux display-message -p '#S' | grep "^$SESSION_NAME$" >/dev/null; then
     echo "This is the [$SESSION_NAME] session!";
-else
-    if ! tmux has-session -t \="$SESSION_NAME" &>/dev/null; then
-        # Pin the new (detached) session's dimensions to the current client
-        # / terminal so percentage-based splits inside add-claude resolve
-        # against the right canvas. tmux's default-size is 80x24, which
-        # would otherwise distort the layout once a real terminal attaches.
-        if [[ -n "$TMUX" ]]; then
-            cols=$(  tmux display-message -p '#{client_width}'  )
-            lines=$( tmux display-message -p '#{client_height}' )
-        else
-            # `stty size` reads from the controlling tty directly — more
-            # reliable than `tput`, which falls back to 80x24 whenever the
-            # terminfo lookup is ambiguous.
-            sz=( ${(z)"$(stty size 2>/dev/null)"} )
-            lines=${sz[1]:-60}
-            cols=${sz[2]:-200}
-        fi
+    exit 0
+fi
 
-        # Resolve the per-session env cascade (.workon.env / .workon.local.env
-        # from $HOME down to the session dir). Sets become `-e KEY=VAL` on the
-        # session, which tmux seeds into the session environment so every pane
-        # (shell, claude, sessions, editor, and ad-hoc splits) inherits them.
-        env_set_args=() ; env_unset_keys=()
-        while IFS= read -r line; do
-            [[ -z "$line" ]] && continue
-            if [[ "$line" == -* ]]; then
-                env_unset_keys+=( "${line#-}" )
-            else
-                env_set_args+=( -e "$line" )
-            fi
-        done < <( workon-env "$WORK_DIR" )
-
-        # Pane 0 is spawned by new-session itself, so the set-environment -r
-        # below can't strip inherited vars from it. Tell its supervisor to
-        # clear them in-process before it launches the shell.
-        sup0="work-supervisor --default=zsh"
-        for k in "${env_unset_keys[@]}"; do
-            sup0+=" --unset ${(q)k}"
-        done
-
-        tmux new-session -d -x "$cols" -y "$lines" \
-            "${env_set_args[@]}" \
-            -c "$WORK_DIR" -s "$SESSION_NAME" "$sup0"
-
-        # Strip unset vars from the session environment so panes created below
-        # (claude, sessions, editor) don't inherit them.
-        for k in "${env_unset_keys[@]}"; do
-            tmux set-environment -t \="$SESSION_NAME" -r "$k"
-        done
-
-        # Every pane — shell, claude, sessions — is rooted at $WORK_DIR, which
-        # for `-w` is the worktree work-worktree just resolved. claude adopts
-        # that cwd; it must not be told to manage a worktree of its own.
-        initialize_session "$SESSION_NAME" "$WORK_DIR"
-    fi
-
+if tmux has-session -t \="$SESSION_NAME" &>/dev/null; then
     if [[ -n "$TMUX" ]]; then
         tmux switch-client -t \="$SESSION_NAME"
     else
         tmux attach-session -t \="$SESSION_NAME"
     fi
+    exit 0
+fi
+
+if [[ "${DIR:0:1}" != "/" ]]; then
+    if [[ -d "$HOME/projects/$DIR" ]]; then
+        DIR="$HOME/projects/$DIR"
+    elif [[ -d "$GOPATH/src/github.com/$DIR" ]]; then
+        DIR="$GOPATH/src/github.com/$DIR"
+    elif [[ -d "$PWD/$DIR" ]]; then
+        DIR="$PWD/$DIR"
+    else
+        # Bare project name filed under an org dir: ~/projects/<org>/<name>.
+        # This is the name the PROJECT column in `sessions` shows, so it has
+        # to resolve. First match wins; qualify with the org to disambiguate.
+        nested=( $HOME/projects/*/"$DIR"(N/) )
+        if (( $#nested )); then
+            DIR="$nested[1]"
+        else
+            DIR="$HOME"
+        fi
+    fi
+fi
+
+# Resolve worktree path (no-op for WORK_NAME=prime). An existing worktree dir
+# is reused as-is, so this is also the "reopen a previous worktree" path when
+# its tmux session is gone.
+if ! WORK_DIR=$( work-worktree "$DIR" "$WORK_NAME" ); then
+    exit 1
+fi
+
+# Pin the new (detached) session's dimensions to the current client
+# / terminal so percentage-based splits inside add-claude resolve
+# against the right canvas. tmux's default-size is 80x24, which
+# would otherwise distort the layout once a real terminal attaches.
+if [[ -n "$TMUX" ]]; then
+    cols=$(  tmux display-message -p '#{client_width}'  )
+    lines=$( tmux display-message -p '#{client_height}' )
+else
+    # `stty size` reads from the controlling tty directly — more
+    # reliable than `tput`, which falls back to 80x24 whenever the
+    # terminfo lookup is ambiguous.
+    sz=( ${(z)"$(stty size 2>/dev/null)"} )
+    lines=${sz[1]:-60}
+    cols=${sz[2]:-200}
+fi
+
+# Resolve the per-session env cascade (.workon.env / .workon.local.env
+# from $HOME down to the session dir). Sets become `-e KEY=VAL` on the
+# session, which tmux seeds into the session environment so every pane
+# (shell, claude, sessions, editor, and ad-hoc splits) inherits them.
+env_set_args=() ; env_unset_keys=()
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if [[ "$line" == -* ]]; then
+        env_unset_keys+=( "${line#-}" )
+    else
+        env_set_args+=( -e "$line" )
+    fi
+done < <( workon-env "$WORK_DIR" )
+
+# Pane 0 is spawned by new-session itself, so the set-environment -r
+# below can't strip inherited vars from it. Tell its supervisor to
+# clear them in-process before it launches the shell.
+sup0="work-supervisor --default=zsh"
+for k in "${env_unset_keys[@]}"; do
+    sup0+=" --unset ${(q)k}"
+done
+
+tmux new-session -d -x "$cols" -y "$lines" \
+    "${env_set_args[@]}" \
+    -c "$WORK_DIR" -s "$SESSION_NAME" "$sup0"
+
+# Strip unset vars from the session environment so panes created below
+# (claude, sessions, editor) don't inherit them.
+for k in "${env_unset_keys[@]}"; do
+    tmux set-environment -t \="$SESSION_NAME" -r "$k"
+done
+
+# Every pane — shell, claude, sessions — is rooted at $WORK_DIR, which
+# for `-w` is the worktree work-worktree just resolved. claude adopts
+# that cwd; it must not be told to manage a worktree of its own.
+initialize_session "$SESSION_NAME" "$WORK_DIR"
+
+if [[ -n "$TMUX" ]]; then
+    tmux switch-client -t \="$SESSION_NAME"
+else
+    tmux attach-session -t \="$SESSION_NAME"
 fi

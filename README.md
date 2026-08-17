@@ -84,13 +84,20 @@ Project names resolve in this order:
 1. `$HOME/projects/<name>`
 2. `$GOPATH/src/github.com/<name>`
 3. `$PWD/<name>`
+4. `$HOME/projects/*/<name>` — a bare project name filed under an org dir,
+   so `workon gpt-universe` finds `~/projects/bambee/gpt-universe`. First
+   match wins; qualify with the org (`workon bambee/gpt-universe`) if two
+   orgs use the same project name.
 
 So `workon 0/dotfiles` opens `~/projects/0/dotfiles` as session `dotfiles`
 (the `0/` prefix is stripped). Periods in the resolved name are replaced
 with hyphens because tmux doesn't allow them in session names.
 
 If you run `workon` again for a session that already exists, it just
-switches to it — no setup happens twice.
+switches to it — no setup happens twice, and no directory or worktree
+resolution runs at all. The session name only depends on the *basename* of
+the project plus the work, so any spelling that got you there the first
+time gets you back.
 
 ## Multiple work threads on one project (`-w`)
 
@@ -108,6 +115,10 @@ project directory directly.
 
     workon dotfiles                 # session: dotfiles      dir: ~/projects/0/dotfiles
     workon -w spike dotfiles        # session: dotfiles-spike dir: ~/projects/0/dotfiles-worktrees/spike
+
+Re-running the same `-w` command reopens the work: if the tmux session is
+still alive it just switches, and if it isn't, the existing worktree is
+reused as-is (no `git worktree add`, no branch reset).
 
 ## Editor mode (`-e`)
 
