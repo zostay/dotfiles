@@ -1,6 +1,6 @@
 ---
 name: maintenance-weekly
-description: Weekly maintenance for the dotfiles repo. Discovered by zed:maintenance as a maintenance-<tag> skill, so /zed:maintenance weekly runs it. Currently refreshes the model context-window table that bin/sessions depends on.
+description: Weekly maintenance for the dotfiles repo. Discovered by zed:maintenance as a maintenance-<tag> skill, so /zed:maintenance weekly runs it. Refreshes the model context-window table that bin/sessions depends on, and rotates the YouTube Music playlists.
 ---
 
 # Weekly maintenance (dotfiles)
@@ -18,7 +18,18 @@ discovers and runs it.
    keeps the `N/M` CONTEXT column in `bin/sessions` accurate as Anthropic ships
    or retires models.
 
-2. **Report** what the run did — whether the model table changed and, if so, how.
+2. **Rotate the music playlists.** Invoke the `rotate-music-playlists` skill
+   and let it run to completion. It runs `bin/rotate-music` for both real mixes
+   (`coder-mix`, `heavy-rock`), swapping tracks between each mix and its rotation
+   pool. It changes nothing in this repo — the output is the report.
+
+   This step depends on Chrome being signed in to YouTube Music (the credential
+   comes from the extension on each run). If auth fails, that's environmental:
+   record it and carry on with the sweep rather than treating it as a repo
+   problem.
+
+3. **Report** what the run did — whether the model table changed and, if so, how,
+   plus which tracks rotated in and out of each mix.
 
 ## Project-specific
 
