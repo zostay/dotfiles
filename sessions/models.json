@@ -1,8 +1,9 @@
 {
   "_comment": "Claude model context windows, consumed by bin/sessions to render the CONTEXT column (N/M). Generated from https://platform.claude.com/docs/en/about-claude/models/overview.md — do NOT hand-edit; refresh with the refresh-model-context-windows skill (runs in weekly maintenance). 'context' is max input tokens (the M); 'max_output' is informational. Keys are bare Claude API aliases; bin/sessions strips [1m]/-fast/-YYYYMMDD suffixes before lookup.",
-  "updated": "2026-08-03",
+  "updated": "2026-09-01",
   "models": {
     "claude-fable-5":    { "context": 1000000, "max_output": 128000 },
+    "claude-fable-5-1":  { "context": 1000000, "max_output": 128000 },
     "claude-haiku-4-5":  { "context":  200000, "max_output":  64000 },
     "claude-mythos-5":   { "context": 1000000, "max_output": 128000 },
     "claude-opus-4-0":   { "context":  200000, "max_output":  32000 },
