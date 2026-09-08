@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+"""Shuffle the stored track order of a rotation's playlists.
+
+This is a one-time repair, not part of the weekly rotation. Run it by hand.
+
+Why it exists: bin/rotate-music walks each playlist from the front, because
+position encodes age -- the front of the live mix is the longest-serving
+tracks, the front of the bench is the longest-benched. That is the whole point
+of the rotation. But if the stored order is grouped by album, then "walk by
+age" and "walk by album" are the same walk, so each run retires a solid block
+of one album and recalls a solid block of another.
+
+The fix belongs in the data, not in the selection: shuffle the stored order
+once and the two walks come apart. rotate-music keeps retiring the oldest and
+recalling the longest-away, but the oldest cohort is now album-diverse. It
+stays that way on its own, since tracks return from a shuffled bench in
+batches that are no longer album blocks.
+
+Cost: about two API calls per playlist. add_playlist_items and
+remove_playlist_items each send a single browse/edit_playlist request for the
+whole batch, however many tracks are in it. (It is edit_playlist(moveItem=...)
+that costs one call per track -- do not shuffle that way.)
+
+Order of operations: add the shuffled copies first, then remove the originals
+by their known setVideoIds. A failure partway leaves a doubled playlist, which
+is recoverable, rather than an emptied one. The original order is written to
+~/.rotate-music-backups/ before anything is touched.
+"""
+
+from ytmusicapi import YTMusic
+from os.path import expanduser, dirname, realpath
+from datetime import datetime
+import argparse
+import json
+import os
+import random
+import sys
+import yaml
+
+sys.path.insert(0, dirname(realpath(__file__)))
+import rotate_music_auth as auth
+
+config_file = expanduser("~/.rotate-music.yaml")
+backup_dir = expanduser("~/.rotate-music-backups")
+
+# Keep request bodies to a sane size; each chunk is one API call.
+CHUNK = 100
+
+
+def load_rotation(name):
+    with open(config_file, "r") as cfg_file:
+        cfg = yaml.safe_load(cfg_file)
+
+    rotations = cfg.get("rotations", {})
+    if rotations.get(name) is None:
+        sys.exit("Rotation %s not found in %s" % (name, config_file))
+
+    rotation = rotations[name]
+    return [
+        ("mix", rotation["playlist"]),
+        ("bench", rotation["rotation"]),
+    ]
+
+
+def chunks(items, n):
+    for i in range(0, len(items), n):
+        yield items[i:i + n]
+
+
+def describe(track):
+    artists = track.get("artists") or []
+    who = artists[0]["name"] if artists and artists[0].get("name") else "?"
+    return "%s by %s" % (track.get("title", "?"), who)
+
+
+def backup(rotation_name, label, playlist_id, tracks):
+    os.makedirs(backup_dir, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    path = os.path.join(
+        backup_dir, "%s-%s-%s.json" % (rotation_name, label, stamp))
+    with open(path, "w") as fh:
+        json.dump(
+            {
+                "rotation": rotation_name,
+                "list": label,
+                "playlistId": playlist_id,
+                "savedAt": stamp,
+                "tracks": [
+                    {
+                        "videoId": t.get("videoId"),
+                        "setVideoId": t.get("setVideoId"),
+                        "title": t.get("title"),
+                        "artist": (t.get("artists") or [{}])[0].get("name"),
+                        "likeStatus": t.get("likeStatus"),
+                    }
+                    for t in tracks
+                ],
+            },
+            fh,
+            indent=2,
+        )
+    os.chmod(path, 0o600)
+    return path
+
+
+def shuffle_playlist(ytmusic, rotation_name, label, playlist_id, dry_run):
+    print("\n== %s (%s)" % (label, playlist_id))
+
+    try:
+        playlist = ytmusic.get_playlist(playlist_id, 10000)
+    except Exception:
+        print("Failed to fetch playlist: %s" % playlist_id)
+        raise
+
+    tracks = playlist["tracks"]
+    print("   %d tracks" % len(tracks))
+
+    # Only touch what can be put back. An item missing either id cannot be
+    # re-added or cannot be removed, so leave it where it is and say so.
+    movable, stuck = [], []
+    for t in tracks:
+        (movable if t.get("videoId") and t.get("setVideoId") else stuck).append(t)
+    for t in stuck:
+        print("   leaving in place (unavailable): %s" % describe(t))
+
+    if len(movable) < 2:
+        print("   nothing to shuffle")
+        return
+
+    path = backup(rotation_name, label, playlist_id, tracks)
+    print("   original order saved to %s" % path)
+
+    shuffled = movable[:]
+    random.shuffle(shuffled)
+    video_ids = [t["videoId"] for t in shuffled]
+
+    print("   new order begins: %s" % "; ".join(
+        describe(t) for t in shuffled[:3]))
+
+    if dry_run:
+        print("   dry run -- %d adds and %d removes not sent" % (
+            len(list(chunks(video_ids, CHUNK))),
+            len(list(chunks(movable, CHUNK)))))
+        return
+
+    # Add the shuffled copies first. If this fails, the playlist still holds
+    # its originals and nothing is lost.
+    added = 0
+    for batch in chunks(video_ids, CHUNK):
+        try:
+            ytmusic.add_playlist_items(playlist_id, batch, duplicates=True)
+        except Exception:
+            print("   FAILED adding tracks after %d; originals are intact, "
+                  "and %d duplicates are now present. Remove them by hand or "
+                  "restore from %s" % (added, added, path))
+            raise
+        added += len(batch)
+    print("   re-added %d tracks in shuffled order" % added)
+
+    # Then remove the originals by their own setVideoIds, which are distinct
+    # from the copies just added.
+    removed = 0
+    for batch in chunks(movable, CHUNK):
+        try:
+            ytmusic.remove_playlist_items(playlist_id, batch)
+        except Exception:
+            print("   FAILED removing originals after %d. The playlist holds "
+                  "both copies; the originals are listed in %s" % (
+                      removed, path))
+            raise
+        removed += len(batch)
+    print("   removed %d originals -- playlist is shuffled" % removed)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Shuffle the stored order of a rotation's playlists.")
+    parser.add_argument("rotation", help="rotation name from ~/.rotate-music.yaml")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="fetch and report, but change nothing")
+    parser.add_argument("--only", choices=["mix", "bench"],
+                        help="shuffle just one of the two lists")
+    args = parser.parse_args()
+
+    lists = load_rotation(args.rotation)
+    if args.only:
+        lists = [l for l in lists if l[0] == args.only]
+
+    try:
+        headers, source = auth.acquire()
+    except auth.AuthError as e:
+        sys.exit(str(e))
+
+    try:
+        ytmusic = YTMusic(headers)
+    except Exception:
+        print("Failed to connect to the YouTube API")
+        raise
+
+    for label, playlist_id in lists:
+        shuffle_playlist(ytmusic, args.rotation, label, playlist_id,
+                         args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

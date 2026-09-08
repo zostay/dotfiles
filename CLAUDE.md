@@ -109,6 +109,14 @@ The one exception is `rotate-music-login --ask`, the manual fallback: it writes 
 
 `rotate-music-login` (default) validates the file and, if missing/stale/`--force`, wakes the extension by opening a background YTM tab (`tabs.onUpdated` fires the refresh) and waits for the mtime to move. `--ask` keeps the old paste-a-cURL flow as a fallback. `--install` registers the native host into every Chrome/Canary/Chromium profile found and is re-run by `install.sh`; loading the unpacked extension stays a one-time manual step.
 
+## YouTube Music rotation order
+
+**`every_other_one` in `bin/rotate-music` is age-ordered on purpose.** Playlist position encodes age — the front of the live mix is the longest-serving tracks, the front of the bench is the longest-benched — and retiring the oldest while recalling the longest-away is the whole point of the rotation. The every-*other* skip is a mild de-clump within that oldest cohort, not an attempt at a random spread. **Do not replace this with sampling**; that trades away the feature to fix a symptom.
+
+**When rotations move whole albums, the fault is in the stored order, not the walk.** If a playlist is grouped by album then "walk by age" and "walk by album" are the same walk, so each run retires a solid block of one album and recalls a solid block of another. `bin/shuffle-rotation <rotation>` is the repair: a **one-time, run-by-hand** shuffle of the stored order that makes the two walks come apart. It is deliberately not part of the weekly rotation — once the order is decorrelated it stays that way, because tracks return from a shuffled bench in batches that are no longer blocks.
+
+**Shuffling costs about two API calls per playlist, not one per track.** `add_playlist_items` and `remove_playlist_items` each accumulate one `actions` array and send a **single** `browse/edit_playlist` request, however many tracks are in it. It is `edit_playlist(moveItem=...)` that sends one `ACTION_MOVE_VIDEO_BEFORE` per request — shuffling that way would cost a call per track, which is why `shuffle-rotation` rebuilds the list instead of moving items. `shuffle-rotation` adds the shuffled copies **first** and only then removes the originals by their known `setVideoId`s, so a failure partway leaves a doubled playlist (recoverable) rather than an emptied one, and it dumps the original order to `~/.rotate-music-backups/` before touching anything. Re-adding preserves `likeStatus` (it belongs to the track, not the playlist entry), and YouTube occasionally canonicalizes a `videoId` to an equivalent one for the same song — harmless, since rotate-music re-fetches every run.
+
 ## Repository layout notes
 
 - `bin/` is symlinked verbatim to `~/bin`. Anything dropped here becomes a user command.
