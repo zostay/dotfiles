@@ -24,7 +24,11 @@ exercising the pipeline against throwaway playlists — leave it out of the swee
 
    Capture its output. It prints the tracks it moved out ("Moving out of
    rotation:") and back in ("Moving into rotation:"), with `-` marking regular
-   tracks and `*` marking favorited ones.
+   tracks and `*` marking favorited ones, under a header giving the playlist
+   size, its maximum, and the counts each way. **Those counts are often
+   unequal, and that is correct** — the outgoing side also carries whatever the
+   mix is over `playlist_max`, trimming it back to 200. Report the asymmetry as
+   the trim it is; don't chase it as a bug.
 
 2. **Run the heavy rock mix** the same way, but only if step 1 succeeded — see
    the auth note below:

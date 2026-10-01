@@ -65,7 +65,11 @@ def rotate_ytmusic():
         print(f"failed to fetch rotation playlist: {rotation_id}")
         raise
 
-    regular_needs_rotate = regular_rotate + playlist_songs["trackCount"] - playlist_max
+    # The outgoing side carries the overflow as well as the rotation, so the
+    # playlist is trimmed back to playlist_max instead of being held at whatever
+    # size it has drifted to. That makes the out and in counts deliberately
+    # unequal whenever the playlist is not sitting exactly at the maximum.
+    regular_needs_rotate = max(0, regular_rotate + playlist_songs["trackCount"] - playlist_max)
     best_needs_rotate = best_rotate
 
     regular_needs_replacement = regular_rotate
@@ -77,7 +81,11 @@ def rotate_ytmusic():
             regular_needs_rotate, 
             best_needs_rotate)
 
-    print("Moving out of rotation:")
+    describe_plan(playlist_songs["trackCount"],
+            len(outgoing_regular), len(outgoing_best),
+            regular_needs_replacement, best_needs_replacement)
+
+    print("\nMoving out of rotation:")
     display_tracks(outgoing_regular, outgoing_best)
 
     if len(outgoing) > 0:
@@ -149,6 +157,28 @@ def every_other_one(tracks, n, pred):
         needsSkip = True
         i += 1
     return matches
+
+# Explains the track counts before the tracks themselves are listed, so that an
+# unequal number out and in reads as the trim it is rather than as a bug. The
+# over/under sentence comes from the playlist size and the Out counts from the
+# tracks actually picked, so both match the list printed below; the In counts are
+# still the target at this point, since the bench is not walked until the
+# outgoing writes are done, and fall short only if the bench runs dry.
+def describe_plan(track_count, out_regular, out_best, in_regular, in_best):
+    excess = track_count - playlist_max
+    print("%s: %d tracks, maximum %d." % (rotation_name, track_count, playlist_max))
+    if excess > 0:
+        print("That is %d over the maximum, so up to %d extra regular track(s) go"
+              " out on top of the usual %d to trim the playlist back down to %d."
+              % (excess, excess, regular_rotate, playlist_max))
+    elif excess < 0:
+        print("That is %d under the maximum, so fewer regular track(s) go out than"
+              " the usual %d, letting the playlist grow back up to %d."
+              % (-excess, regular_rotate, playlist_max))
+    print("Out: %d regular + %d favorited. In: %d regular + %d favorited.%s"
+          % (out_regular, out_best, in_regular, in_best,
+             "" if out_regular + out_best == in_regular + in_best
+             else " The totals differ on purpose."))
 
 def display_tracks(regular, best):
     for t in regular:
