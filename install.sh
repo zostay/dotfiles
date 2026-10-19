@@ -126,10 +126,6 @@ tmpl-link-file msmtprc ~/.msmtprc
 
 tmpl-link-file signature ~/.signature
 
-link-file repl.rc ~/.re.pl/repl.rc
-
-link-file XCompose ~/.XCompose
-
 tmpl-link-file minikube/offlineimap.yaml ~/.zostay-minikube/offlineimap.yaml
 
 link-file rotate-music.yaml ~/.rotate-music.yaml
