@@ -108,6 +108,8 @@ endif
 
 autocmd FileType perl,raku,json,zsh,sh autocmd BufWritePre <buffer> :%s/\s\+$//e
 
+autocmd FileType markdown setlocal wrap lbr
+
 " Git
 autocmd BufNewFile,BufRead *.git/COMMIT_EDITMSG setf gitcommit
 
